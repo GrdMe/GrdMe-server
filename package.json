@@ -1,0 +1,26 @@
+{
+  "name": "grdme-server",
+  "version": "0.0.0",
+  "description": "message & key server",
+  "main": "server.js",
+  "author": "grdme team",
+  "dependencies": {
+    "body-parser": "latest",
+    "express": "^4.13.3",
+    "method-override": "latest",
+    "morgan": "latest"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/grdme/grd.me-server.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/grdme/grd.me-server/issues"
+  },
+  "homepage": "https://github.com/grdme/grd.me-server"
+}

@@ -1,5 +1,5 @@
 node_modules
-Chrome.zip
 grd_me.xpi
 npm-debug.log
-Chrome/dist
+.DS_Store
+.vagrant
