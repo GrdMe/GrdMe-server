@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/grdme/grd.me-server.svg)](https://travis-ci.org/grdme/grd.me-server)
+
 Grd Me
 ======
 
