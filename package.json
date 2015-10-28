@@ -8,7 +8,12 @@
     "body-parser": "latest",
     "express": "^4.13.3",
     "method-override": "latest",
-    "morgan": "latest"
+    "morgan": "latest",
+    "nano": "latest",
+    "basic-auth": "latest",
+    "protobufjs": "latest",
+    "bcrypt": "latest",
+    "mongoose": "latest"
   },
   "scripts": {
     "start": "node server.js"

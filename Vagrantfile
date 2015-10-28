@@ -76,16 +76,14 @@ Vagrant.configure(2) do |config|
     apt-get update
     apt-get install -y nodejs
 
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+    echo "deb http://repo.mongodb.org/apt/ubuntu "$(lsb_release -sc)"/mongodb-org/3.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.0.list
     sudo apt-get update
-    sudo npm install -g express-generator
-    sudo npm link express
+    sudo apt-get install -y mongodb-org
+    #sudo apt-get install -y couchdb
 
-    sudo apt-get install -y couchdb
-
-    sudo sed -i 's/bind_address = 127.0.0.1/bind_address = 0.0.0.0/g' /etc/couchdb/default.ini
-    sudo service couchdb restart
-
-    sudo npm install -g nano
+    #sudo sed -i 's/bind_address = 127.0.0.1/bind_address = 0.0.0.0/g' /etc/couchdb/default.ini
+    #sudo service couchdb restart
 
     echo node.js version:
     node -v
