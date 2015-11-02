@@ -13,7 +13,9 @@
     "basic-auth": "latest",
     "protobufjs": "latest",
     "bcrypt": "latest",
-    "mongoose": "latest"
+    "mongoose": "latest",
+    "axolotl-crypto": "latest",
+    "express-rate-limit": "latest"
   },
   "scripts": {
     "start": "node server.js"
