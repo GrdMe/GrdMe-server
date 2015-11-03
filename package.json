@@ -15,7 +15,10 @@
     "bcrypt": "latest",
     "mongoose": "latest",
     "axolotl-crypto": "latest",
-    "express-rate-limit": "latest"
+    "express-rate-limit": "latest",
+    "base64-arraybuffer": "latest",
+    "request": "latest",
+    "axolotl": "latest"
   },
   "scripts": {
     "start": "node server.js"
