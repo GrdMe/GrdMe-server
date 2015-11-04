@@ -298,12 +298,6 @@
                 axol.generateLastResortPreKey().then(function(lastResortKey) { // Generate our last restore pre-key to send to the server
                     axol.generatePreKeys(0, 100).then(function(preKeys) { // Generate the first set of our pre-keys to send to the server
                         console.log("Type of Key: "+typeof(idKeyPair.public));
-                        result = {
-                            identityKeyPair : idKeyPair,
-                            reqistrationId : registrationId,
-                            lastResortKey : lastResortKey,
-                            preKeys: preKeys
-                        };
 
                         var basicAuthUserName = base64.encode(idKeyPair.public);
                         basicAuthUserName = basicAuthUserName.concat(NAME_DELIMITER);
@@ -317,39 +311,14 @@
                         console.log("Basic_Auth User Name: " + basicAuthUserName);
                         console.log("Basic_Auth Passwors: "+ basicAuthPassword);
 
-                        // var pubkey = base64.decode(base64.encode(idKeyPair.public));
-                        // var dataToSign = base64.decode(now.getTime());
-                        // var signature = base64.decode(signature);
-                        // var verified = crypto.verifySignature(pubkey,
-                        //                              dataToSign,
-                        //                              signature);
-                        // console.log("Signature verifiable?: "+verified);
-
-                        /* Make Request to register user */
-                    //     var postData = {
-                    //       name: 'test',
-                    //       value: 'test'
-                    //     };
-                    //     var url = 'http://'+basicAuthUserName+':'+''+'@localhost:8080/v1/key/initial/';
-                    //     var options = {
-                    //       method: 'post',
-                    //       //body: postData,
-                    //       //json: true,
-                    //       url: url
-                    //     };
-                    //     request(options, function (err, res, body) {
-                    //       if (err) {
-                    //         console.log("Error in making request to /v1/key/initial: ");
-                    //         console.log(err);
-                    //         console.log("SATATUS CODE OF RESPONSE: "+statusCode);
-                    //         return res.json(result);
-                    //       }
-                    //       var headers = res.headers;
-                    //       var statusCode = res.statusCode;
-                    //       console.log("SATATUS CODE OF RESPONSE: "+statusCode);
-                    //       return res.json(result);
-                    //   });
-
+                        result = {
+                            basicAuthUserName : basicAuthUserName,
+                            basicAuthPassword : basicAuthPassword,
+                            identityKeyPair : idKeyPair,
+                            reqistrationId : registrationId,
+                            lastResortKey : lastResortKey,
+                            preKeys: preKeys
+                        };
                         return res.json(result);
                     });
                 });
@@ -361,11 +330,150 @@
         // });
     });
 
+    app.get('/test/demo', function(req, res) {
+        /* Make Request to create user & credentials */
+        var result = "";
+        /**********************
+        **  Make request to  **
+        **   /test/axolotl   **
+        **********************/
+        result = result.concat("GENERATING USER AND AUTH CREDENTIALS FOR DEMO:\n");
+        result = result.concat(" - Expected: No auth, 200 returned, credentials & prekeys returned in body\n");
+        result = result.concat("    Making request to /test/axolotl ...\n");
+        var postData = {};
+        var url = 'http://localhost:8080/test/axolotl';
+        var options = {
+          method: 'get',
+          //body: postData,
+          //json: true,
+          url: url
+        };
+        request(options, function (err, response, body) {
+          if (err) {
+            console.log("Error in making request to /test/axolotl: ");
+            console.log(err);
+            return;
+          }
+          var headers = response.headers;
+          var statusCode = response.statusCode;
+          var axolotlJson = JSON.parse(body);
+          var basicAuthUserName = axolotlJson.basicAuthUserName;
+          var basicAuthPassword = axolotlJson.basicAuthPassword;
+          result = result.concat("    Returned status: " +statusCode+ "\n");
+          result = result.concat("    basic_auth username: "+basicAuthUserName +"\n");
+          result = result.concat("    basic_auth password: "+basicAuthPassword +"\n");
+
+
+          /**********************
+          **  Make request to  **
+          **  /v1/key/update  **
+          **********************/
+          result = result.concat("\n");
+          result = result.concat("USING AUTH CREDENTIALS TO ACCESS PROTECTED PAGE\n");
+          result = result.concat(" - Expected: Access DENIED, 401 returned implies user/device HAVE NOT BEEN registered\n");
+          result = result.concat("    Making request to /v1/key/update ...\n");
+          var postData = {};
+          var url = 'http://localhost:8080/v1/key/update';
+          var options = {
+            method: 'post',
+            //body: postData,
+            //json: true,
+            url: url,
+            auth: {
+                user: basicAuthUserName,
+                password: basicAuthPassword
+            }
+          };
+          request(options, function (err2, response2, body2) {
+            if (err2) {
+              console.log("Error in making request to /v1/key/initial: ");
+              console.log(err2);
+              return;
+            }
+            var headers = response2.headers;
+            var statusCode = response2.statusCode;
+            result = result.concat("    Returned status: " +statusCode+ "\n");
+
+            /**********************
+            **  Make request to  **
+            **  /v1/key/initial  **
+            **********************/
+            result = result.concat("\n");
+            result = result.concat("USING AUTH CREDENTIALS TO MAKE INITIAL PREKEY UPLOAD\n");
+            result = result.concat(" - Expected: Access granted, 200 returned implies user/device/prekeys registered\n");
+            result = result.concat("    Making request to /v1/key/initial ...\n");
+            var postData = {};
+            var url = 'http://localhost:8080/v1/key/initial';
+            var options = {
+              method: 'post',
+              //body: postData,
+              //json: true,
+              url: url,
+              auth: {
+                  user: basicAuthUserName,
+                  password: basicAuthPassword
+              }
+            };
+            request(options, function (err2, response2, body2) {
+              if (err2) {
+                console.log("Error in making request to /v1/key/initial: ");
+                console.log(err2);
+                return;
+              }
+              var headers = response2.headers;
+              var statusCode = response2.statusCode;
+              //var axolotlJson = JSON.parse(body2);
+
+              //var basicAuthUserName = axolotlJson.basicAuthUserName;
+              //var basicAuthPassword = axolotlJson.basicAuthPassword;
+              result = result.concat("    Returned status: " +statusCode+ "\n");
+              //result = result.concat("    basic_auth username: "+basicAuthUserName +"\n");
+              //result = result.concat("    basic_auth password: "+basicAuthPassword +"\n");
+
+              /**********************
+              **  Make request to  **
+              **  /v1/key/update  **
+              **********************/
+              result = result.concat("\n");
+              result = result.concat("USING AUTH CREDENTIALS TO ACCESS PROTECTED PAGE AGAIN\n");
+              result = result.concat(" - Expected: Access greanted, 200 returned implies user/device HAVE been registered in DB\n");
+              result = result.concat("    Making request to /v1/key/update ...\n");
+              var postData = {};
+              var url = 'http://localhost:8080/v1/key/update';
+              var options = {
+                method: 'post',
+                //body: postData,
+                //json: true,
+                url: url,
+                auth: {
+                    user: basicAuthUserName,
+                    password: basicAuthPassword
+                }
+              };
+              request(options, function (err2, response2, body2) {
+                if (err2) {
+                  console.log("Error in making request to /v1/key/initial: ");
+                  console.log(err2);
+                  return;
+                }
+                var headers = response2.headers;
+                var statusCode = response2.statusCode;
+                result = result.concat("    Returned status: " +statusCode+ "\n");
+
+
+                return res.send(result);
+            });
+          });
+        });
+      });
+    });
+
 
     // application -------------------------------------------------------------
 
 
     app.get('/', function (req, res) {
+
         res.send('Hello World!');
     });
 
