@@ -10,7 +10,6 @@
     var bodyParser = require('body-parser');                // pull information from HTML POST (express4)
     var methodOverride = require('method-override');        // simulate DELETE and PUT (express4)
     var basicAuth = require('basic-auth');
-    var bcrypt = require('bcrypt');
     var protoBuf = require('protobufjs');
     var crypto = require("axolotl-crypto"); // docs: https://github.com/joebandenburg/libaxolotl-javascript/blob/master/doc/crypto.md
     var rateLimit = require('express-rate-limit'); // docs: https://www.npmjs.com/package/express-rate-limit
@@ -65,22 +64,14 @@
                  }]
     });
 
-    var AUTH_CHALLENGE_TIME_TO_LIVE = 30; //seconds
-    var authSchema = mongoose.Schema({
-        nonce : Buffer, //will be stored as ArrayBuffer that is generated on server
-        identityKeyCatDid  : String, //will be base64 that comes via httprequest <identityKey>|<deviceId>
-        identityKey : String,
-        timestamp : { type: Date, expires: AUTH_CHALLENGE_TIME_TO_LIVE, default: Date.now }
-    });
+    var AUTH_CHALLENGE_TIME_TO_LIVE = 60; //seconds
 
     var Users = mongoose.model('Users', userSchema);
-    var AuthChallenges = mongoose.model('AuthChallenges', authSchema);
 
     // routes ======================================================================
     // auth
     /* Constants */
     var NAME_DELIMITER = "|";
-    var NONCE_BYTE_LENGTH = 32; //256 bits
 
     /* Helper function to deny access */
     var unauthorized = function (res) {
@@ -98,120 +89,109 @@
     };
 
     var initialAuth = function (req, res, next) {
-        /* get basic_auth fields from request */
-        var user = basicAuth(req);
-        var names = user.name.split(NAME_DELIMITER);
+        /* Parse auth credentials */
+        var credentials = basicAuth(req);
+        var names = credentials.name.split(NAME_DELIMITER);
         if (names.length != 2) {
+            console.log("Authentication Failed - Badly Formed basic_auth");
             return unauthorized(res);
         }
         var identityKey = names[0];
         var deviceId = names[1];
+        var pass = credentials.pass.split(NAME_DELIMITER);
+        if (pass.length != 2) {
+            console.log("Authentication Failed - Badly Formed basic_auth");
+            return unauthorized(res);
+        }
+        var authDate = Number(pass[0]);
+        var authSig = pass[1];
         /* Qurey DB. Continue iff idKey & did combo DNE */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
                 if ((!dbUser || !userContainsDeviceId(dbUser, deviceId) ) && !err) {
-                    return next();
-                } else {
+                    /* Verify date freshness */
+                    var timeAuthDate = new Date(authDate);
+                    var timeNow = new Date();
+                    var difference = timeNow - timeAuthDate;
+                    var pubkey = base64.decode(identityKey);
+                    var dataToSign = base64.decode(authDate);
+                    var signature = base64.decode(authSig);
+                    var verified = crypto.verifySignature(pubkey,
+                                                 dataToSign,
+                                                 signature);
+                    if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > 0) { //if auth is fresh
+                        /* Verify signature on date */
+                        var verified = crypto.verifySignature(pubkey, dataToSign, signature);
+                        /* return apropriate response */
+                        if (verified) { // signature on date verified
+                            return next();
+                        } else { // signature on date !verified
+                            console.log("Authentication Failed - Bad signature");
+                            return unauthorized(res);
+                        }
+                    } else { //else, auth is stale
+                        console.log("Authentication Failed - Stale date");
+                        return unauthorized(res);
+                    }
+                } else { // identityKey + did combo existed in DB
+                    console.log("Authentication Failed - idkey/did exist in DB");
                     return unauthorized(res);
                 }
             });
     };
 
     var auth = function (req, res, next) {
-        /* Helper function. Converts node Buffer to JS ArrayBuffer */
-        function toArrayBuffer(buffer) {
-            var ab = new ArrayBuffer(buffer.length);
-            var view = new Uint8Array(ab);
-            for (var i = 0; i < buffer.length; ++i) {
-                view[i] = buffer[i];
-            }
-            return ab;
-        };
-
         /* get basic_auth fields from request */
-        var user = basicAuth(req); //!!this is somehow asynchronous
+        var user = basicAuth(req);
 
-        /* Proceed depending on presence/absence of basic_auth fields */
-        if (user && user.name && !user.pass) {   // if username & no password in basic_auth
-            /* Initial connection to server requires <identityKey>|<deviceId> in
-             * the username field of http basic_auth and empty password field.
-             * Server generates nonce, and temporarily saves it in relation to the
-             * identityKey & deviceId. Server responds with 401 (unauthorized) header
-             * and the nonce in the body.
-            */
-            var names = user.name.split(NAME_DELIMITER);
+        if (user && user.name && user.pass) {   // if username & password in basic_auth)
+            /* Parse auth credentials */
+            var credentials = basicAuth(req);
+            var names = credentials.name.split(NAME_DELIMITER);
             if (names.length != 2) {
+                console.log("Authentication Failed - Badly Formed basic_auth");
                 return unauthorized(res);
             }
             var identityKey = names[0];
             var deviceId = names[1];
+            var pass = credentials.pass.split(NAME_DELIMITER);
+            if (names.length != 2) {
+                console.log("Authentication Failed - Badly Formed basic_auth");
+                return unauthorized(res);
+            }
+            var authDate = Number(pass[0]);
+            var authSig = base64.decode(pass[1]);
 
-            /* Only continue if identityKey & did exist is Users db*/
+            /* Only continue if identityKey & did exist is Users db */
             Users.findOne({identityKey : identityKey},
                 function(err, dbUser) {
                     if (dbUser && userContainsDeviceId(dbUser, deviceId) && !err) { //if identityKey & did exist is Users db
-                        /* generate nonce */
-                        var nonce = crypto.randomBytes(NONCE_BYTE_LENGTH); //of type ArrayBuffer
-                        console.log("Type of Nonce: " + typeof(nonce));
-                        /* insert nonce into database */
-                        AuthChallenges.create({
-                            "nonce" : nonce,
-                            "identityKeyCatDid" : user.name,
-                            "identityKey" : identityKey,
-                            "timestamp" : Date.now
-                        }, function(err, authChallenge) {
-                            if (err)
-                                res.send(err);
-                            if (authChallenge) {
-                                /* Respond to client with nonce */
-                                return res.status(401).send({"nonce": nonce});
+                        /* Verify date freshness */
+                        var timeAuthDate = new Date(authDate);
+                        var timeNow = new Date();
+                        var difference = timeNow - timeAuthDate
+                        if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > 0) { //if auth is fresh
+                            /* Verify signature on date */
+                            var verified = crypto.verifySignature(base64.decode(identityKey), base64.decode(authDate), authSig);
+                            /* return apropriate response */
+                            if (verified) {
+                                return next();
                             } else {
+                                console.log("Authentication Failed - Bad signature");
                                 return unauthorized(res);
                             }
-                        });
-                    } else { //identityKey & did !exist is Users db
-                        return unauthorized(res);
-                    }
-                }
-            );
-
-        } else if (user && user.name && user.pass) {   // if username & password in basic_auth)
-            /* Second connection to server requires <identityKey>|<deviceId> in
-             * the username field of http basic_auth and signature(nonce) in the
-             * password field.
-             * Server verifies signature of nonce by requesting the nonce from
-             * the authChallenges db collection. If signature is verified, access
-             * is granted; else, 401
-            */
-
-            /* Query db for authChallenge */
-            AuthChallenges.findOne({identityKey : user.name},
-                function(err, authChallenge) {
-                    /* Note - even though docs in the AuthChallenges collection
-                     * time out automaticly, Mogodb's data expiration task only
-                     * runs once per minuite, so checking the timestamp here
-                     * is still necessary.
-                    */
-                    if (authChallenge
-                        && date.now - authChallenge.timestamp < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) //convert sec to milliseconds
-                        && !err) { //if authChallenge not timed out
-                        /* convert signature to ArrayBuffer */
-                        var signatureArrayBuffer = base64.decode(user.pass);
-                        /* verify signature */
-                        var verified = crypto.verifySignature(authChallenge.identityKey, authChallenge.nonce, signatureArrayBuffer);
-                        /* return apropriate response */
-                        if (verified) {
-                            return next();
-                        } else {
+                        } else { //else, auth is stale
+                            console.log("Authentication Failed - Stale date");
                             return unauthorized(res);
                         }
-
                     } else { //identityKey & did !exist is Users db
+                        console.log("Authentication Failed - idkey/did DNE in DB");
                         return unauthorized(res);
                     }
                 }
             );
         } else { //if no basic_auth credentials
+            console.log("Authentication Failed - No basic_auth");
             return unauthorized(res);
         }
     };
@@ -220,13 +200,13 @@
     // api =========================================================================
 
     //Register prekeys
-    app.post('/v1/key/initial'/*, initialAuth*/, function(req, res) {
+    app.post('/v1/key/initial', initialAuth, function(req, res) {
         /* get basic_auth fields from request */
         console.log("1");
         var user = basicAuth(req);
         var names = user.name.split(NAME_DELIMITER);
         if (names.length != 2) {
-            return res.status(400);
+            return res.sendStatus(401);
         }
         var identityKey = names[0];
         var deviceId = names[1];
@@ -249,9 +229,7 @@
                      }]*/
         }, function(err, user) {
             console.log("3");
-            if(err) {
-                return res.send(err);
-            } else if (user) {
+            if (user && !err) {
                 return res.sendStatus(200);
             } else {
                 return res.sendStatus(500);
@@ -264,8 +242,10 @@
 
     //Register prekeys
     app.post('/v1/key/update', auth, function(req, res) {
-        var lastResortKey = req.body.body.lastResortKey;
-        var prekeys = req.body.body.keys;
+        console.log("ACCESS GRANTED!!!!");
+        //var lastResortKey = req.body.body.lastResortKey;
+        //var prekeys = req.body.body.keys;
+        return res.sendStatus(200);
     });
 
     //getting a recipients prekeys based on idkey and device key
@@ -298,6 +278,19 @@
         console.log(Number(new Date()));
         return res.sendStatus(200);
     });
+    app.get('/test/freshness/:time', function(req, res) {
+        console.log(req.params.time);
+        var reqTime = new Date(Number(req.params.time));
+        var now = new Date();
+        console.log(reqTime);
+        console.log(now);
+        console.log("-------------");
+
+        console.log(String(reqTime));
+        console.log(Math.abs(now - reqTime));
+        console.log(Boolean(now - reqTime < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000)));
+        return res.sendStatus(200);
+    });
     app.get('/test/axolotl', function(req, res) {
         var result;
         axol.generateIdentityKeyPair().then(function(idKeyPair) { // Generate our identity key
@@ -311,10 +304,26 @@
                             lastResortKey : lastResortKey,
                             preKeys: preKeys
                         };
+
                         var basicAuthUserName = base64.encode(idKeyPair.public);
                         basicAuthUserName = basicAuthUserName.concat(NAME_DELIMITER);
                         basicAuthUserName = basicAuthUserName.concat(registrationId);
+                        var now = new Date();
+                        var basicAuthPassword = String(now.getTime());
+                        basicAuthPassword = basicAuthPassword.concat(NAME_DELIMITER);
+                        var signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(now.getTime())));
+                        basicAuthPassword = basicAuthPassword.concat(signature);
+
                         console.log("Basic_Auth User Name: " + basicAuthUserName);
+                        console.log("Basic_Auth Passwors: "+ basicAuthPassword);
+
+                        // var pubkey = base64.decode(base64.encode(idKeyPair.public));
+                        // var dataToSign = base64.decode(now.getTime());
+                        // var signature = base64.decode(signature);
+                        // var verified = crypto.verifySignature(pubkey,
+                        //                              dataToSign,
+                        //                              signature);
+                        // console.log("Signature verifiable?: "+verified);
 
                         /* Make Request to register user */
                     //     var postData = {
@@ -341,8 +350,7 @@
                     //       return res.json(result);
                     //   });
 
-                    return res.json(result);
-
+                        return res.json(result);
                     });
                 });
             });

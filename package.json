@@ -12,7 +12,6 @@
     "nano": "latest",
     "basic-auth": "latest",
     "protobufjs": "latest",
-    "bcrypt": "latest",
     "mongoose": "latest",
     "axolotl-crypto": "latest",
     "express-rate-limit": "latest",
