@@ -64,7 +64,7 @@
                  }]
     });
 
-    var AUTH_CHALLENGE_TIME_TO_LIVE = 60; //seconds
+    var AUTH_CHALLENGE_TIME_TO_LIVE = 120; //seconds
 
     var Users = mongoose.model('Users', userSchema);
 
@@ -432,14 +432,14 @@
 
               /**********************
               **  Make request to  **
-              **  /v1/key/update  **
+              **  /v1/key/initial  **
               **********************/
               result = result.concat("\n");
-              result = result.concat("USING AUTH CREDENTIALS TO ACCESS PROTECTED PAGE AGAIN\n");
-              result = result.concat(" - Expected: Access greanted, 200 returned implies user/device HAVE been registered in DB\n");
-              result = result.concat("    Making request to /v1/key/update ...\n");
+              result = result.concat("ATTEMPTING TO MAKE INITIAL PREKEY UPLOAD AGAIN\n");
+              result = result.concat(" - Expected: Access denied, 401 returned implies idKey/did combo already exists in DB\n");
+              result = result.concat("    Making request to /v1/key/initial ...\n");
               var postData = {};
-              var url = 'http://localhost:8080/v1/key/update';
+              var url = 'http://localhost:8080/v1/key/initial';
               var options = {
                 method: 'post',
                 //body: postData,
@@ -458,10 +458,47 @@
                 }
                 var headers = response2.headers;
                 var statusCode = response2.statusCode;
+                //var axolotlJson = JSON.parse(body2);
+
+                //var basicAuthUserName = axolotlJson.basicAuthUserName;
+                //var basicAuthPassword = axolotlJson.basicAuthPassword;
                 result = result.concat("    Returned status: " +statusCode+ "\n");
+                //result = result.concat("    basic_auth username: "+basicAuthUserName +"\n");
+                //result = result.concat("    basic_auth password: "+basicAuthPassword +"\n");
+
+                /**********************
+                **  Make request to  **
+                **  /v1/key/update  **
+                **********************/
+                result = result.concat("\n");
+                result = result.concat("USING AUTH CREDENTIALS TO ACCESS PROTECTED PAGE AGAIN\n");
+                result = result.concat(" - Expected: Access granted, 200 returned implies user/device HAVE been registered in DB\n");
+                result = result.concat("    Making request to /v1/key/update ...\n");
+                var postData = {};
+                var url = 'http://localhost:8080/v1/key/update';
+                var options = {
+                  method: 'post',
+                  //body: postData,
+                  //json: true,
+                  url: url,
+                  auth: {
+                      user: basicAuthUserName,
+                      password: basicAuthPassword
+                  }
+                };
+                request(options, function (err2, response2, body2) {
+                  if (err2) {
+                    console.log("Error in making request to /v1/key/initial: ");
+                    console.log(err2);
+                    return;
+                  }
+                  var headers = response2.headers;
+                  var statusCode = response2.statusCode;
+                  result = result.concat("    Returned status: " +statusCode+ "\n");
 
 
-                return res.send(result);
+                  return res.send(result);
+              });
             });
           });
         });
