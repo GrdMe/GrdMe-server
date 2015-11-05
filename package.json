@@ -9,7 +9,6 @@
     "express": "^4.13.3",
     "method-override": "latest",
     "morgan": "latest",
-    "nano": "latest",
     "basic-auth": "latest",
     "protobufjs": "latest",
     "mongoose": "latest",
@@ -22,12 +21,16 @@
   "scripts": {
     "start": "node server.js"
   },
-  "devDependencies": {},
+  "devDependencies": {
+      "mocha": "latest",
+      "should": "latest",
+      "supertest": "latest"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/grdme/grd.me-server.git"
   },
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/grdme/grd.me-server/issues"
   },
