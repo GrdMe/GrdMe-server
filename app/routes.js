@@ -188,7 +188,7 @@ module.exports = function(app) {
     });
 
     //submitting a message
-    app.post('/v1/messages/', basicAuth, function(req, res) {
+    app.post('/v1/messages/', auth, function(req, res) {
         var signature = req.body.signature;
         var bodyToVerify = req.body.body;
 
@@ -224,6 +224,7 @@ module.exports = function(app) {
         console.log(Number(new Date()));
         return res.sendStatus(200);
     });
+
     app.get('/test/freshness/:time', function(req, res) {
         console.log(req.params.time);
         var reqTime = new Date(Number(req.params.time));
@@ -237,29 +238,56 @@ module.exports = function(app) {
         console.log(Boolean(now - reqTime < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000)));
         return res.sendStatus(200);
     });
+
     app.get('/test/axolotl', function(req, res) {
         var result;
         axol.generateIdentityKeyPair().then(function(idKeyPair) { // Generate our identity key
             axol.generateRegistrationId().then(function(registrationId) { // Generate our registration id
                 axol.generateLastResortPreKey().then(function(lastResortKey) { // Generate our last restore pre-key to send to the server
                     axol.generatePreKeys(0, 100).then(function(preKeys) { // Generate the first set of our pre-keys to send to the server
-                        console.log("Type of Key: "+typeof(idKeyPair.public));
 
+                        // Generate auth user names
                         var basicAuthUserName = base64.encode(idKeyPair.public);
                         basicAuthUserName = basicAuthUserName.concat(NAME_DELIMITER);
+                        var badDidUserName = basicAuthUserName.concat('123456');
                         basicAuthUserName = basicAuthUserName.concat(registrationId);
+
+                        // Generate valid auth password
                         var now = new Date();
                         var basicAuthPassword = String(now.getTime());
                         basicAuthPassword = basicAuthPassword.concat(NAME_DELIMITER);
                         var signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(now.getTime())));
                         basicAuthPassword = basicAuthPassword.concat(signature);
 
+                        // Generate <timestamp>|<sign(timestamp)> from future
+                        var future = now.getTime() + (2*AUTH_CHALLENGE_TIME_TO_LIVE);
+                        var futurePassword = String(future);
+                        futurePassword = futurePassword.concat(NAME_DELIMITER);
+                        var futureSignature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(future)));
+                        futurePassword = futurePassword.concat(futureSignature);
+
+                        // Generate bad password <valid timestamp>|<bad signature>
+                        var badSignaturePassword = String(now.getTime());
+                        badSignaturePassword = badSignaturePassword.concat(NAME_DELIMITER);
+                        badSignaturePassword = badSignaturePassword.concat(signature);
+
+                        // Generate <timestamp>|<sign(timestamp)> from past
+                        var past = now.getTime() - (AUTH_CHALLENGE_TIME_TO_LIVE);
+                        var pastPassword = String(past);
+                        pastPassword = pastPassword.concat(NAME_DELIMITER);
+                        signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(past)));
+                        pastPassword = pastPassword.concat(signature);
+
                         console.log("Basic_Auth User Name: " + basicAuthUserName);
-                        console.log("Basic_Auth Passwors: "+ basicAuthPassword);
+                        console.log("Basic_Auth Password: "+ basicAuthPassword);
 
                         result = {
                             basicAuthUserName : basicAuthUserName,
+                            badDidUserName : badDidUserName,
                             basicAuthPassword : basicAuthPassword,
+                            badSignaturePassword : badSignaturePassword,
+                            futurePassword : futurePassword,
+                            pastPassword : pastPassword,
                             identityKeyPair : idKeyPair,
                             reqistrationId : registrationId,
                             lastResortKey : lastResortKey,

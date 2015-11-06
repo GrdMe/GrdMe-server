@@ -4,7 +4,7 @@
 
 // set up ======================================================================
     var express  = require('express');
-    var app      = express();                               // create our app w/ express
+    var app      = express();                              // create our app w/ express
     var mongoose = require('mongoose');                     // mongoose for mongodb
     var morgan   = require('morgan');                       // log requests to the console (express4)
     var bodyParser = require('body-parser');                // pull information from HTML POST (express4)
@@ -38,3 +38,5 @@
     app.listen(8080, function () {
         console.log('Grd Me sever listening at http://11.12.13.14:8080');
     });
+
+    exports.app = app;
