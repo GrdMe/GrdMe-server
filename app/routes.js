@@ -43,7 +43,7 @@ module.exports = function(app) {
                     var timeNow = new Date();
                     var difference = timeNow - timeAuthDate;
                     var pubkey = base64.decode(identityKey);
-                    var dataToSign = base64.decode(authDate);
+                    var dataToSign = base64.decode(String(authDate));
                     var signature = base64.decode(authSig);
                     var verified = crypto.verifySignature(pubkey,
                                                  dataToSign,
@@ -101,7 +101,7 @@ module.exports = function(app) {
                         var difference = timeNow - timeAuthDate
                         if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > 0) { //if auth is fresh
                             /* Verify signature on date */
-                            var verified = crypto.verifySignature(base64.decode(identityKey), base64.decode(authDate), authSig);
+                            var verified = crypto.verifySignature(base64.decode(identityKey), base64.decode(String(authDate)), authSig);
                             /* return apropriate response */
                             if (verified) {
                                 return next();
@@ -131,7 +131,6 @@ module.exports = function(app) {
     //Register prekeys
     app.post('/v1/key/initial', initialAuth, function(req, res) {
         /* get basic_auth fields from request */
-        console.log("1");
         var user = basicAuth(req);
         var names = user.name.split(NAME_DELIMITER);
         if (names.length != 2) {
@@ -140,7 +139,6 @@ module.exports = function(app) {
         var identityKey = names[0];
         var deviceId = names[1];
         /* Create DB Entry. New user and/or new device w/ prekeys */
-        console.log("2");
         Users.create({
             identityKey: identityKey,
             devices : [
@@ -157,7 +155,6 @@ module.exports = function(app) {
                                 deviceId: String}]
                      }]*/
         }, function(err, user) {
-            console.log("3");
             if (user && !err) {
                 return res.sendStatus(200);
             } else {
@@ -256,30 +253,32 @@ module.exports = function(app) {
                         var now = new Date();
                         var basicAuthPassword = String(now.getTime());
                         basicAuthPassword = basicAuthPassword.concat(NAME_DELIMITER);
-                        var signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(now.getTime())));
+                        var signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(String(now.getTime()))));
                         basicAuthPassword = basicAuthPassword.concat(signature);
 
                         // Generate <timestamp>|<sign(timestamp)> from future
-                        var future = now.getTime() + (2*AUTH_CHALLENGE_TIME_TO_LIVE);
+                        var future = (now.getTime() + (2*AUTH_CHALLENGE_TIME_TO_LIVE*1000));
                         var futurePassword = String(future);
                         futurePassword = futurePassword.concat(NAME_DELIMITER);
-                        var futureSignature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(future)));
+                        var futureSignature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(String(future))));
                         futurePassword = futurePassword.concat(futureSignature);
 
                         // Generate bad password <valid timestamp>|<bad signature>
                         var badSignaturePassword = String(now.getTime());
                         badSignaturePassword = badSignaturePassword.concat(NAME_DELIMITER);
-                        badSignaturePassword = badSignaturePassword.concat(signature);
+                        badSignaturePassword = badSignaturePassword.concat(futureSignature);
 
                         // Generate <timestamp>|<sign(timestamp)> from past
-                        var past = now.getTime() - (AUTH_CHALLENGE_TIME_TO_LIVE);
+                        var past = now.getTime() - (AUTH_CHALLENGE_TIME_TO_LIVE*1000);
                         var pastPassword = String(past);
                         pastPassword = pastPassword.concat(NAME_DELIMITER);
-                        signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(past)));
+                        signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(String(past))));
                         pastPassword = pastPassword.concat(signature);
 
                         console.log("Basic_Auth User Name: " + basicAuthUserName);
                         console.log("Basic_Auth Password: "+ basicAuthPassword);
+                        console.log("Future Password    : " + futurePassword);
+                        console.log("Bad Sig Password   : "+ badSignaturePassword);
 
                         result = {
                             basicAuthUserName : basicAuthUserName,

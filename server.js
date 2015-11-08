@@ -13,7 +13,7 @@
 
     // configuration ===========================================================
     var limiter = rateLimit({/* config */});
-    app.use(limiter);
+    //app.use(limiter);
     app.use(express.static(__dirname + '/public'));                 // set the static files location /public/img will be /img for users
     app.use(morgan('dev'));                                         // log every request to the console
     app.use(bodyParser.urlencoded({'extended':'true'}));            // parse application/x-www-form-urlencoded
@@ -35,8 +35,8 @@
 
 
     // listen ==================================================================
-    app.listen(8080, function () {
+    exports.app = app.listen(8080, function () {
         console.log('Grd Me sever listening at http://11.12.13.14:8080');
     });
 
-    exports.app = app;
+    //exports.app = app;

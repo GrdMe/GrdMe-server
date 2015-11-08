@@ -5,27 +5,29 @@
   "main": "server.js",
   "author": "grdme team",
   "dependencies": {
+    "axolotl": "latest",
+    "axolotl-crypto": "latest",
+    "base64-arraybuffer": "latest",
+    "basic-auth": "latest",
     "body-parser": "latest",
     "express": "^4.13.3",
-    "method-override": "latest",
-    "morgan": "latest",
-    "basic-auth": "latest",
-    "protobufjs": "latest",
-    "mongoose": "latest",
-    "axolotl-crypto": "latest",
     "express-rate-limit": "latest",
-    "base64-arraybuffer": "latest",
-    "request": "latest",
-    "axolotl": "latest"
+    "method-override": "latest",
+    "mongoose": "latest",
+    "morgan": "latest",
+    "protobufjs": "latest",
+    "request": "latest"
   },
   "scripts": {
     "start": "node server.js",
+
     "test": "./node_modules/.bin/mocha"
   },
   "devDependencies": {
-      "mocha": "latest",
-      "should": "latest",
-      "supertest": "latest"
+    "mocha": "latest",
+    "should": "latest",
+    "supertest": "latest",
+    "jasmine-node": "latest"
   },
   "repository": {
     "type": "git",

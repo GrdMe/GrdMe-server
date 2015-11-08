@@ -17,8 +17,8 @@ describe("Routes:", function(done) {
     var prekeys;
     var lastResortKey;
 
-    before('Create Credentials & Keys for testing', function(done) {
-        this.timeout(10000);
+    it('Create Credentials & Keys for testing', function(done) {
+        //this.timeout(10000);
         request(app)
         .get('/test/axolotl')
         .end(function(err, res) {
@@ -49,8 +49,8 @@ describe("Routes:", function(done) {
                         if(err) {
                             throw err;
                         }
-                        //expect(res.status).toEqual(401);
-                        res.status.should.equal(401);
+                        expect(res.status).toEqual(401);
+                        //res.status.should.equal(401);
                         done();
                     });
                 });
@@ -64,8 +64,8 @@ describe("Routes:", function(done) {
                         if(err) {
                             throw err;
                         }
-                        //expect(res.status).toEqual(401);
-                        res.status.should.equal(401);
+                        expect(res.status).toEqual(401);
+                        //res.status.should.equal(401);
                         done();
                     });
                 });
@@ -79,8 +79,8 @@ describe("Routes:", function(done) {
                         if(err) {
                             throw err;
                         }
-                        //expect(res.status).toEqual(401);
-                        res.status.should.equal(401);
+                        expect(res.status).toEqual(401);
+                        //res.status.should.equal(401);
                         done();
                     });
                 });
@@ -99,8 +99,8 @@ describe("Routes:", function(done) {
                         if(err) {
                             throw err;
                         }
-                        //expect(res.status).toEqual(401);
-                        res.status.should.equal(401);
+                        expect(res.status).toEqual(401);
+                        //res.status.should.equal(401);
                         done();
                     });
                 });
@@ -116,8 +116,8 @@ describe("Routes:", function(done) {
                         if(err) {
                             throw err;
                         }
-                        //expect(res.status).toEqual(401);
-                        res.status.should.equal(401);
+                        expect(res.status).toEqual(401);
+                        //res.status.should.equal(401);
                         done();
                     });
                 });
@@ -133,8 +133,8 @@ describe("Routes:", function(done) {
                         if(err) {
                             throw err;
                         }
-                        //expect(res.status).toEqual(401);
-                        res.status.should.equal(401);
+                        expect(res.status).toEqual(401);
+                        //res.status.should.equal(401);
                         done();
                     });
                 });
@@ -150,8 +150,8 @@ describe("Routes:", function(done) {
                         if(err) {
                             throw err;
                         }
-                        //expect(res.status).toEqual(200);
-                        res.status.should.equal(200);
+                        expect(res.status).toEqual(200);
+                        //res.status.should.equal(401);
                         done();
                     });
                 });
@@ -159,8 +159,8 @@ describe("Routes:", function(done) {
         });//end of 'Valid Credentials'
     });//end of decribe 'Initial Authentication, not registered'
 
-    // it('Close Server', function(done) {
-    //     app.close();
-    //     done();
-    // });
+    it('Close Server', function(done) {
+        app.close();
+        done();
+    });
 });
