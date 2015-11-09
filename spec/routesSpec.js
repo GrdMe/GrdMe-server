@@ -40,10 +40,10 @@ describe("Routes:", function(done) {
 
     describe('Regular Authentication, not registered:', function() {
         describe('Try Valid Credentials:', function() {
-            describe('POST /v1/key/update/', function() {
+            describe('POST /api/v1/key/update/', function() {
                 it('should respond with 401', function(done){
                     request(app)
-                    .post('/v1/key/update/')
+                    .post('/api/v1/key/update/')
                     .auth(authUn, authPass)
                     .end(function(err, res) {
                         if(err) {
@@ -55,10 +55,10 @@ describe("Routes:", function(done) {
                     });
                 });
             });
-            describe('GET /v1/key/', function() {
+            describe('GET /api/v1/key/', function() {
                 it('should respond with 401', function(done){
                     request(app)
-                    .get('/v1/key/')
+                    .get('/api/v1/key/')
                     .auth(authUn, authPass)
                     .end(function(err, res) {
                         if(err) {
@@ -70,10 +70,10 @@ describe("Routes:", function(done) {
                     });
                 });
             });
-            describe('POST /v1/messages/', function() {
+            describe('POST /api/v1/message/', function() {
                 it('should respond with 401', function(done){
                     request(app)
-                    .post('/v1/messages/')
+                    .post('/api/v1/message/')
                     .auth(authUn, authPass)
                     .end(function(err, res) {
                         if(err) {
@@ -90,10 +90,10 @@ describe("Routes:", function(done) {
 
     describe('Initial Authentication, not registered:', function() {
         describe('Try Invalid Credentials: Bad Signature', function() {
-            describe('POST /v1/key/initial/', function() {
+            describe('POST /api/v1/key/initial/', function() {
                 it('should respond with 401', function(done){
                     request(app)
-                    .post('/v1/key/initial/')
+                    .post('/api/v1/key/initial/')
                     .auth(authUn, authPassBadSig)
                     .end(function(err, res) {
                         if(err) {
@@ -107,10 +107,10 @@ describe("Routes:", function(done) {
             });
         });//end of 'Bad Signature'
         describe('Try Invalid Credentials: Future Password', function() {
-            describe('POST /v1/key/initial/', function() {
+            describe('POST /api/v1/key/initial/', function() {
                 it('should respond with 401', function(done){
                     request(app)
-                    .post('/v1/key/initial/')
+                    .post('/api/v1/key/initial/')
                     .auth(authUn, authPassFuture)
                     .end(function(err, res) {
                         if(err) {
@@ -124,10 +124,10 @@ describe("Routes:", function(done) {
             });
         });//end of 'Future Password'
         describe('Try Invalid Credentials: Past Password', function() {
-            describe('POST /v1/key/initial/', function() {
+            describe('POST /api/v1/key/initial/', function() {
                 it('should respond with 401', function(done){
                     request(app)
-                    .post('/v1/key/initial/')
+                    .post('/api/v1/key/initial/')
                     .auth(authUn, authPassPast)
                     .end(function(err, res) {
                         if(err) {
@@ -141,10 +141,10 @@ describe("Routes:", function(done) {
             });
         });//end of 'Past Password'
         describe('Try Valid Credentials:', function() {
-            describe('POST /v1/key/initial/', function() {
+            describe('POST /api/v1/key/initial/', function() {
                 it('should respond with 200', function(done){
                     request(app)
-                    .post('/v1/key/initial/')
+                    .post('/api/v1/key/initial/')
                     .auth(authUn, authPass)
                     .end(function(err, res) {
                         if(err) {
