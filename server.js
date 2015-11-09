@@ -35,8 +35,14 @@
 
 
     // listen ==================================================================
-    exports.app = app.listen(8080, function () {
+    var server = app.listen(8080, function () {
         console.log('Grd Me sever listening at http://11.12.13.14:8080');
     });
 
-    //exports.app = app;
+    exports.close = function() {
+        console.log("CLOSING CLOSING CLOSING");
+        server.close();
+        mongoose.disconnect();
+    };
+
+    exports.app = app;

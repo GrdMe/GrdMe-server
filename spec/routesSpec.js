@@ -160,7 +160,7 @@ describe("Routes:", function(done) {
     });//end of decribe 'Initial Authentication, not registered'
 
     it('Close Server', function(done) {
-        app.close();
+        server.close();
         done();
     });
 });
