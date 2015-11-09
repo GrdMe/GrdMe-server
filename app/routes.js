@@ -20,8 +20,12 @@ module.exports = function(app) {
     var initialAuth = function (req, res, next) {
         /* Parse auth credentials */
         var credentials = basicAuth(req);
+        if(!credentials) {
+            console.log("Authentication Failed - No basic_auth");
+            return unauthorized(res);
+        }
         var names = credentials.name.split(NAME_DELIMITER);
-        if (names.length != 2) {
+        if (names.length != 2 || !names[0] || !names[1]) {
             console.log("Authentication Failed - Badly Formed basic_auth");
             return unauthorized(res);
         }
@@ -72,7 +76,10 @@ module.exports = function(app) {
     var auth = function (req, res, next) {
         /* get basic_auth fields from request */
         var user = basicAuth(req);
-
+        if(!user) {
+            console.log("Authentication Failed - No basic_auth");
+            return unauthorized(res);
+        }
         if (user && user.name && user.pass) {   // if username & password in basic_auth)
             /* Parse auth credentials */
             var credentials = basicAuth(req);
@@ -129,7 +136,7 @@ module.exports = function(app) {
     // api =========================================================================
 
     //Register prekeys
-    app.post('/v1/key/initial', initialAuth, function(req, res) {
+    app.post('/api/v1/key/initial', initialAuth, function(req, res) {
         /* get basic_auth fields from request */
         var user = basicAuth(req);
         var names = user.name.split(NAME_DELIMITER);
@@ -167,7 +174,7 @@ module.exports = function(app) {
     });
 
     //Register prekeys
-    app.post('/v1/key/update', auth, function(req, res) {
+    app.post('/api/v1/key/update', auth, function(req, res) {
         console.log("ACCESS GRANTED!!!!");
         //var lastResortKey = req.body.body.lastResortKey;
         //var prekeys = req.body.body.keys;
@@ -175,7 +182,7 @@ module.exports = function(app) {
     });
 
     //getting a recipients prekeys based on idkey and device key
-    app.get('/v1/key/', auth, function(req, res) {
+    app.get('/api/v1/key/', auth, function(req, res) {
         var signature = req.body.signature;
         var bodyToVerify = req.body.body;
 
@@ -185,7 +192,7 @@ module.exports = function(app) {
     });
 
     //submitting a message
-    app.post('/v1/messages/', auth, function(req, res) {
+    app.post('/api/v1/message/', auth, function(req, res) {
         var signature = req.body.signature;
         var bodyToVerify = req.body.body;
 
@@ -492,8 +499,9 @@ module.exports = function(app) {
 /* Helper Functions */
 /* Helper function to deny access */
 var unauthorized = function (res) {
-    res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
-    return res.sendStatus(401);
+    var timeJson = {time: (new Date()).getTime()};
+    //res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
+    return res.status(401).json(timeJson);
 };
 
 /* Helper function to determin if deviceId exists under IdentityKey */
