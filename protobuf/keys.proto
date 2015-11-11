@@ -1,0 +1,20 @@
+package protoprekeys;
+
+// public/private keypair structure
+message Keypair {
+    optional bytes public = 1;
+    optional bytes private = 2;
+}
+
+// singular prekey structure containing keypairs
+message Prekey {
+    optional int64 id = 1;
+    optional Keypair keypair = 2;
+}
+
+
+//keys to be uploaded to server
+message Prekeys {
+    optional Prekey lastResortKey = 1;
+    repeated Prekey prekeys = 2;
+}

@@ -7,6 +7,7 @@ var AUTH_CHALLENGE_TIME_TO_LIVE = 120; //seconds
 /* load required modules */
 var basicAuth = require('basic-auth');
 var protoBuf = require('protobufjs');
+var buffertools = require('buffertools');
 var crypto = require("axolotl-crypto"); // docs: https://github.com/joebandenburg/libaxolotl-javascript/blob/master/doc/crypto.md
 var base64 = require('base64-arraybuffer');
 
@@ -138,39 +139,79 @@ module.exports = function(app) {
     //Register prekeys
     app.post('/api/v1/key/initial', initialAuth, function(req, res) {
         /* get basic_auth fields from request */
+        console.log("IN THE REAL ROUTE");
         var user = basicAuth(req);
+        if (!user) {
+            return res.sendStatus(401);
+        }
         var names = user.name.split(NAME_DELIMITER);
         if (names.length != 2) {
             return res.sendStatus(401);
         }
         var identityKey = names[0];
         var deviceId = names[1];
-        /* Create DB Entry. New user and/or new device w/ prekeys */
-        Users.create({
-            identityKey: identityKey,
-            devices : [
-                {deviceId : deviceId}
-            ]
-    /*            devices: [{deviceId: deviceId,
-                       lastResortKey: {keyId: String,
-                                       publicKey: String,
-                                       identityKey: String,
-                                       deviceId: String},
-                        keys: [{keyId: String,
-                                publicKey: String,
-                                identityKey: String,
-                                deviceId: String}]
-                     }]*/
-        }, function(err, user) {
-            if (user && !err) {
-                return res.sendStatus(200);
-            } else {
-                return res.sendStatus(500);
-            }
-        });
 
-        //var lastResortKey = req.body.lastResortKey;
-        //var prekeys = req.body.preKeys;
+        /* Get protobuf payload */
+        var payload = req.body;
+        // console.log("TYPE OF HOPEBUF: "+typeof(hopebuf));
+        // console.log("HB: %j", hopebuf);
+
+        //var payload = buffertools.concat.apply(null, payload);
+        //console.log("PAYLOAD1: %j", payload);
+        var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
+        var Protoprekeys = builder.build("protoprekeys");
+        var Prekeys = Protoprekeys.Prekeys;
+        var Prekey = Protoprekeys.Prekey;
+        var Keypair = Protoprekeys.Keypair;
+        var recievedPrekeys = Prekeys.decode(payload);
+        //recievedPrekeys.lastResortKey = Prekey.decode(recievedPrekeys.lastResortKey);
+        //console.log("PAYLOAD2: %j", payload);
+        //console.log("recievedPrekeys: "+recievedPrekeys);
+        console.log("recievedLRK: "+typeof(recievedPrekeys.lastResortKey.keypair.public));
+        //console.log("recievedLRK: %j", recievedPrekeys);
+
+        //return res.sendStatus(200);
+        // rest of code here
+        /* Create DB Entry. New user and/or new device w/ prekeys */
+        Users.findOne({identityKey : identityKey},
+            function(err, dbUser) {
+                console.log("dbUSer: "+dbUser);
+                var prekeysArray = [];
+                for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
+                    prekeysArray.push({
+                        keyId : Number(recievedPrekeys.prekeys[i].id),
+                        key : recievedPrekeys.prekeys[i].toBuffer()
+                    });
+                }
+                if(!err && dbUser) { //if identityKey exists
+                    //add new device & keys to dbUser
+
+                } else if (!err && !dbUser) { //if identityKey DNE in DB
+                    //create new document in db
+                    Users.create({
+                        identityKey : identityKey,
+                        devices : [{
+                            deviceId : deviceId,
+                            lastresortKey :  {
+                                keyId : Number(recievedPrekeys.lastResortKey.id),
+                                key : recievedPrekeys.lastResortKey.toBuffer()
+                            },
+                            prekeys : prekeysArray
+                        }]
+                    }, function(err, user) {
+                        if (user && !err) {
+                            return res.sendStatus(200);
+                        } else {
+                            console.log("500 1");
+                            console.log(err);
+                            return res.sendStatus(500);
+                        }
+                    });
+                } else { // else, error
+                    console.log("500 2");
+                    return res.sendStatus(500);
+                }
+            });
     });
 
     //Register prekeys
@@ -299,6 +340,7 @@ module.exports = function(app) {
                             lastResortKey : lastResortKey,
                             preKeys: preKeys
                         };
+
                         return res.json(result);
                     });
                 });
@@ -486,6 +528,7 @@ module.exports = function(app) {
     });
 
 
+
     // application -------------------------------------------------------------
 
 
@@ -511,4 +554,17 @@ var userContainsDeviceId = function(user, did) {
             return true;
     }
     return false;
+};
+
+var ab2str = function(buf) {
+  return String.fromCharCode.apply(null, new Int8Array(buf));
+};
+
+var str2ab = function(str) {
+  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
+  var bufView = new Int8Array(buf);
+  for (var i=0, strLen=str.length; i<strLen; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
 };
