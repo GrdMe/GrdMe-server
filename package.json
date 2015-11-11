@@ -16,11 +16,11 @@
     "mongoose": "latest",
     "morgan": "latest",
     "protobufjs": "latest",
-    "request": "latest"
+    "request": "latest",
+    "buffertools": "latest"
   },
   "scripts": {
     "start": "node server.js",
-
     "test": "./node_modules/.bin/jasmine-node --verbose --forceexit spec"
   },
   "devDependencies": {
