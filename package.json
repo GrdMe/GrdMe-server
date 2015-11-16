@@ -16,8 +16,7 @@
     "mongoose": "latest",
     "morgan": "latest",
     "protobufjs": "latest",
-    "request": "latest",
-    "buffertools": "latest"
+    "request": "latest"
   },
   "scripts": {
     "start": "node server.js",

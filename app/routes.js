@@ -7,12 +7,14 @@ var AUTH_CHALLENGE_TIME_TO_LIVE = 120; //seconds
 /* load required modules */
 var basicAuth = require('basic-auth');
 var protoBuf = require('protobufjs');
-var buffertools = require('buffertools');
 var crypto = require("axolotl-crypto"); // docs: https://github.com/joebandenburg/libaxolotl-javascript/blob/master/doc/crypto.md
 var base64 = require('base64-arraybuffer');
 
 /* load db models */
 var Users = require('./models/user');
+
+/* Load protobuf helper methods */
+var pbhelper = require('../protobuf/protobufHelperFunctions')
 
 //expose the routs to app with module.exports
 module.exports = function(app) {
@@ -554,17 +556,4 @@ var userContainsDeviceId = function(user, did) {
             return true;
     }
     return false;
-};
-
-var ab2str = function(buf) {
-  return String.fromCharCode.apply(null, new Int8Array(buf));
-};
-
-var str2ab = function(str) {
-  var buf = new ArrayBuffer(str.length*2); // 2 bytes for each char
-  var bufView = new Int8Array(buf);
-  for (var i=0, strLen=str.length; i<strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
 };
