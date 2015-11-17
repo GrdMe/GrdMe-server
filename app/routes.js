@@ -44,7 +44,7 @@ module.exports = function(app) {
         /* Qurey DB. Continue iff idKey & did combo DNE */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
-                if ((!dbUser || !userContainsDeviceId(dbUser, deviceId) ) && !err) {
+                if ((!dbUser && !userContainsDeviceId(dbUser, deviceId) ) && !err) {
                     /* Verify date freshness */
                     var timeAuthDate = new Date(authDate);
                     var timeNow = new Date();
@@ -162,7 +162,7 @@ module.exports = function(app) {
         var Keypair = Protoprekeys.Keypair;
         var recievedPrekeys = Prekeys.decode(payload);
 
-        console.log("recievedPrekeys: %j", recievedPrekeys);
+        //console.log("recievedPrekeys: %j", recievedPrekeys);
 
         /* Create DB Entry. New user and/or new device w/ prekeys */
         Users.findOne({identityKey : identityKey},
@@ -177,7 +177,6 @@ module.exports = function(app) {
                 }
                 if(!err && dbUser) { //if identityKey exists
                     //add new device & keys to dbUser
-
                 } else if (!err && !dbUser) { //if identityKey DNE in DB
                     //create new document in db
                     Users.create({
@@ -204,6 +203,10 @@ module.exports = function(app) {
                     return res.sendStatus(500);
                 }
             });
+    });
+
+    app.post('/api/v1/key/addDevice', /*<another auth scheme>,*/ function(req, res) {
+        return res.sendStatus(403);
     });
 
     //Register prekeys
@@ -388,9 +391,11 @@ var unauthorized = function (res, code) {
 
 /* Helper function to determin if deviceId exists under IdentityKey */
 var userContainsDeviceId = function(user, did) {
-    for (var i = 0; i < user.devices.length; i++) {
-        if (user.devices[i].deviceId == did)
-            return true;
+    if (user) {
+        for (var i = 0; i < user.devices.length; i++) {
+            if (user.devices[i].deviceId == did)
+                return true;
+        }
     }
     return false;
 };
