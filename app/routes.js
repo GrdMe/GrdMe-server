@@ -25,19 +25,19 @@ module.exports = function(app) {
         var credentials = basicAuth(req);
         if(!credentials) {
             console.log("Authentication Failed - No basic_auth");
-            return unauthorized(res);
+            return unauthorized(res, 400);
         }
         var names = credentials.name.split(NAME_DELIMITER);
         if (names.length != 2 || !names[0] || !names[1]) {
-            console.log("Authentication Failed - Badly Formed basic_auth");
-            return unauthorized(res);
+            console.log("Authentication Failed - Badly Formed basic_auth name");
+            return unauthorized(res, 400);
         }
         var identityKey = names[0];
         var deviceId = names[1];
         var pass = credentials.pass.split(NAME_DELIMITER);
         if (pass.length != 2) {
-            console.log("Authentication Failed - Badly Formed basic_auth");
-            return unauthorized(res);
+            console.log("Authentication Failed - Badly Formed basic_auth pass");
+            return unauthorized(res, 400);
         }
         var authDate = Number(pass[0]);
         var authSig = pass[1];
@@ -63,15 +63,15 @@ module.exports = function(app) {
                             return next();
                         } else { // signature on date !verified
                             console.log("Authentication Failed - Bad signature");
-                            return unauthorized(res);
+                            return unauthorized(res, 401);
                         }
                     } else { //else, auth is stale
                         console.log("Authentication Failed - Stale date");
-                        return unauthorized(res);
+                        return unauthorized(res, 409);
                     }
                 } else { // identityKey + did combo existed in DB
                     console.log("Authentication Failed - idkey/did exist in DB");
-                    return unauthorized(res);
+                    return unauthorized(res, 422);
                 }
             });
     };
@@ -81,22 +81,22 @@ module.exports = function(app) {
         var user = basicAuth(req);
         if(!user) {
             console.log("Authentication Failed - No basic_auth");
-            return unauthorized(res);
+            return unauthorized(res, 400);
         }
         if (user && user.name && user.pass) {   // if username & password in basic_auth)
             /* Parse auth credentials */
             var credentials = basicAuth(req);
             var names = credentials.name.split(NAME_DELIMITER);
             if (names.length != 2) {
-                console.log("Authentication Failed - Badly Formed basic_auth");
-                return unauthorized(res);
+                console.log("Authentication Failed - Badly Formed basic_auth name");
+                return unauthorized(res, 400);
             }
             var identityKey = names[0];
             var deviceId = names[1];
             var pass = credentials.pass.split(NAME_DELIMITER);
             if (names.length != 2) {
-                console.log("Authentication Failed - Badly Formed basic_auth");
-                return unauthorized(res);
+                console.log("Authentication Failed - Badly Formed basic_auth pass");
+                return unauthorized(res, 400);
             }
             var authDate = Number(pass[0]);
             var authSig = base64.decode(pass[1]);
@@ -117,21 +117,21 @@ module.exports = function(app) {
                                 return next();
                             } else {
                                 console.log("Authentication Failed - Bad signature");
-                                return unauthorized(res);
+                                return unauthorized(res, 401);
                             }
                         } else { //else, auth is stale
                             console.log("Authentication Failed - Stale date");
-                            return unauthorized(res);
+                            return unauthorized(res, 409);
                         }
                     } else { //identityKey & did !exist is Users db
                         console.log("Authentication Failed - idkey/did DNE in DB");
-                        return unauthorized(res);
+                        return unauthorized(res, 404);
                     }
                 }
             );
         } else { //if no basic_auth credentials
             console.log("Authentication Failed - No basic_auth");
-            return unauthorized(res);
+            return unauthorized(res, 400);
         }
     };
 
@@ -141,7 +141,6 @@ module.exports = function(app) {
     //Register prekeys
     app.post('/api/v1/key/initial', initialAuth, function(req, res) {
         /* get basic_auth fields from request */
-        console.log("IN THE REAL ROUTE");
         var user = basicAuth(req);
         if (!user) {
             return res.sendStatus(401);
@@ -155,25 +154,16 @@ module.exports = function(app) {
 
         /* Get protobuf payload */
         var payload = req.body;
-        // console.log("TYPE OF HOPEBUF: "+typeof(hopebuf));
-        // console.log("HB: %j", hopebuf);
 
-        //var payload = buffertools.concat.apply(null, payload);
-        //console.log("PAYLOAD1: %j", payload);
         var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
         var Protoprekeys = builder.build("protoprekeys");
         var Prekeys = Protoprekeys.Prekeys;
         var Prekey = Protoprekeys.Prekey;
         var Keypair = Protoprekeys.Keypair;
         var recievedPrekeys = Prekeys.decode(payload);
-        //recievedPrekeys.lastResortKey = Prekey.decode(recievedPrekeys.lastResortKey);
-        //console.log("PAYLOAD2: %j", payload);
-        //console.log("recievedPrekeys: "+recievedPrekeys);
-        console.log("recievedLRK: "+typeof(recievedPrekeys.lastResortKey.keypair.public));
-        //console.log("recievedLRK: %j", recievedPrekeys);
 
-        //return res.sendStatus(200);
-        // rest of code here
+        console.log("recievedPrekeys: %j", recievedPrekeys);
+
         /* Create DB Entry. New user and/or new device w/ prekeys */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
@@ -354,181 +344,6 @@ module.exports = function(app) {
         // });
     });
 
-    app.get('/test/demo', function(req, res) {
-        /* Make Request to create user & credentials */
-        var result = "";
-        /**********************
-        **  Make request to  **
-        **   /test/axolotl   **
-        **********************/
-        result = result.concat("GENERATING USER AND AUTH CREDENTIALS FOR DEMO:\n");
-        result = result.concat(" - Expected: No auth, 200 returned, credentials & prekeys returned in body\n");
-        result = result.concat("    Making request to /test/axolotl ...\n");
-        var postData = {};
-        var url = 'http://localhost:8080/test/axolotl';
-        var options = {
-          method: 'get',
-          //body: postData,
-          //json: true,
-          url: url
-        };
-        request(options, function (err, response, body) {
-          if (err) {
-            console.log("Error in making request to /test/axolotl: ");
-            console.log(err);
-            return;
-          }
-          var headers = response.headers;
-          var statusCode = response.statusCode;
-          var axolotlJson = JSON.parse(body);
-          var basicAuthUserName = axolotlJson.basicAuthUserName;
-          var basicAuthPassword = axolotlJson.basicAuthPassword;
-          result = result.concat("    Returned status: " +statusCode+ "\n");
-          result = result.concat("    basic_auth username: "+basicAuthUserName +"\n");
-          result = result.concat("    basic_auth password: "+basicAuthPassword +"\n");
-
-
-          /**********************
-          **  Make request to  **
-          **  /v1/key/update  **
-          **********************/
-          result = result.concat("\n");
-          result = result.concat("USING AUTH CREDENTIALS TO ACCESS PROTECTED PAGE\n");
-          result = result.concat(" - Expected: Access DENIED, 401 returned implies user/device HAVE NOT BEEN registered\n");
-          result = result.concat("    Making request to /v1/key/update ...\n");
-          var postData = {};
-          var url = 'http://localhost:8080/v1/key/update';
-          var options = {
-            method: 'post',
-            //body: postData,
-            //json: true,
-            url: url,
-            auth: {
-                user: basicAuthUserName,
-                password: basicAuthPassword
-            }
-          };
-          request(options, function (err2, response2, body2) {
-            if (err2) {
-              console.log("Error in making request to /v1/key/initial: ");
-              console.log(err2);
-              return;
-            }
-            var headers = response2.headers;
-            var statusCode = response2.statusCode;
-            result = result.concat("    Returned status: " +statusCode+ "\n");
-
-            /**********************
-            **  Make request to  **
-            **  /v1/key/initial  **
-            **********************/
-            result = result.concat("\n");
-            result = result.concat("USING AUTH CREDENTIALS TO MAKE INITIAL PREKEY UPLOAD\n");
-            result = result.concat(" - Expected: Access granted, 200 returned implies user/device/prekeys registered\n");
-            result = result.concat("    Making request to /v1/key/initial ...\n");
-            var postData = {};
-            var url = 'http://localhost:8080/v1/key/initial';
-            var options = {
-              method: 'post',
-              //body: postData,
-              //json: true,
-              url: url,
-              auth: {
-                  user: basicAuthUserName,
-                  password: basicAuthPassword
-              }
-            };
-            request(options, function (err2, response2, body2) {
-              if (err2) {
-                console.log("Error in making request to /v1/key/initial: ");
-                console.log(err2);
-                return;
-              }
-              var headers = response2.headers;
-              var statusCode = response2.statusCode;
-              //var axolotlJson = JSON.parse(body2);
-
-              //var basicAuthUserName = axolotlJson.basicAuthUserName;
-              //var basicAuthPassword = axolotlJson.basicAuthPassword;
-              result = result.concat("    Returned status: " +statusCode+ "\n");
-              //result = result.concat("    basic_auth username: "+basicAuthUserName +"\n");
-              //result = result.concat("    basic_auth password: "+basicAuthPassword +"\n");
-
-              /**********************
-              **  Make request to  **
-              **  /v1/key/initial  **
-              **********************/
-              result = result.concat("\n");
-              result = result.concat("ATTEMPTING TO MAKE INITIAL PREKEY UPLOAD AGAIN\n");
-              result = result.concat(" - Expected: Access denied, 401 returned implies idKey/did combo already exists in DB\n");
-              result = result.concat("    Making request to /v1/key/initial ...\n");
-              var postData = {};
-              var url = 'http://localhost:8080/v1/key/initial';
-              var options = {
-                method: 'post',
-                //body: postData,
-                //json: true,
-                url: url,
-                auth: {
-                    user: basicAuthUserName,
-                    password: basicAuthPassword
-                }
-              };
-              request(options, function (err2, response2, body2) {
-                if (err2) {
-                  console.log("Error in making request to /v1/key/initial: ");
-                  console.log(err2);
-                  return;
-                }
-                var headers = response2.headers;
-                var statusCode = response2.statusCode;
-                //var axolotlJson = JSON.parse(body2);
-
-                //var basicAuthUserName = axolotlJson.basicAuthUserName;
-                //var basicAuthPassword = axolotlJson.basicAuthPassword;
-                result = result.concat("    Returned status: " +statusCode+ "\n");
-                //result = result.concat("    basic_auth username: "+basicAuthUserName +"\n");
-                //result = result.concat("    basic_auth password: "+basicAuthPassword +"\n");
-
-                /**********************
-                **  Make request to  **
-                **  /v1/key/update  **
-                **********************/
-                result = result.concat("\n");
-                result = result.concat("USING AUTH CREDENTIALS TO ACCESS PROTECTED PAGE AGAIN\n");
-                result = result.concat(" - Expected: Access granted, 200 returned implies user/device HAVE been registered in DB\n");
-                result = result.concat("    Making request to /v1/key/update ...\n");
-                var postData = {};
-                var url = 'http://localhost:8080/v1/key/update';
-                var options = {
-                  method: 'post',
-                  //body: postData,
-                  //json: true,
-                  url: url,
-                  auth: {
-                      user: basicAuthUserName,
-                      password: basicAuthPassword
-                  }
-                };
-                request(options, function (err2, response2, body2) {
-                  if (err2) {
-                    console.log("Error in making request to /v1/key/initial: ");
-                    console.log(err2);
-                    return;
-                  }
-                  var headers = response2.headers;
-                  var statusCode = response2.statusCode;
-                  result = result.concat("    Returned status: " +statusCode+ "\n");
-
-
-                  return res.send(result);
-              });
-            });
-          });
-        });
-      });
-    });
-
 
 
     // application -------------------------------------------------------------
@@ -543,8 +358,30 @@ module.exports = function(app) {
 
 /* Helper Functions */
 /* Helper function to deny access */
-var unauthorized = function (res) {
-    var timeJson = {time: (new Date()).getTime()};
+var unauthorized = function (res, code) {
+    switch (code) {
+        case 401: //unauthorized (bad signature)
+            res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
+            return res.sendStatus(401)
+            break;
+        case 404: //Not Found (identityKey/did DNE in database)
+            return res.sendStatus(404)
+            break;
+        case 409: //conflict (invalid time stamp)
+            var timeJson = {time: (new Date()).getTime()};
+            return res.status(409).json(timeJson);
+            break;
+        case 410: //gone (key revoked)
+            return res.sendStatus(410);
+            break;
+        case 422: //Unprocessable Entity (identityKey/did already exist in database)
+            return res.sendStatus(422);
+            break;
+        default:
+            return res.sendStatus(400); //Bad Request
+            break;
+    }
+
     //res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
     return res.status(401).json(timeJson);
 };
