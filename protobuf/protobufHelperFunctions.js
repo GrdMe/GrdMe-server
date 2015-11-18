@@ -20,13 +20,18 @@ var constructKeysProtobuf = function (lastResortKey, prekeys){
     var Protoprekeys = builder.build("protoprekeys");
     var Prekeys = Protoprekeys.Prekeys;
     var Prekey = Protoprekeys.Prekey;
-    var Keypair = Protoprekeys.Keypair;
+    var KeyPair = Protoprekeys.KeyPair;
 
-    var protoLastResortKey = new Prekey(Number(lastResortKey.id), new Keypair(ab2str(lastResortKey.keyPair.public), ab2str(lastResortKey.keyPair.private)));
+    var protoLastResortKey;
+    if (lastResortKey) {
+        protoLastResortKey = new Prekey(Number(lastResortKey.id), new KeyPair(ab2str(lastResortKey.keyPair.public.buffer || lastResortKey.keyPair.public), ab2str(lastResortKey.keyPair.private.buffer || lastResortKey.keyPair.private)));
+    } else {
+        protoLastResortKey = null;
+    }
 
     var protoPrekeys = new Prekeys(protoLastResortKey);
     for (var i=0; i<prekeys.length; i++) {
-        protoPrekeys['prekeys'][i] = new Prekey(prekeys[i].id, new Keypair(ab2str(prekeys[i].keyPair.public), ab2str(prekeys[i].keyPair.private)));
+        protoPrekeys['prekeys'][i] = new Prekey(prekeys[i].id, new KeyPair(ab2str(prekeys[i].keyPair.public || prekeys[i].keyPair.public), ab2str(prekeys[i].keyPair.private || prekeys[i].keyPair.private)));
     }
     return protoPrekeys;
 };

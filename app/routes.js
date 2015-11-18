@@ -12,6 +12,7 @@ var base64 = require('base64-arraybuffer');
 
 /* load db models */
 var Users = require('./models/user');
+var MessageQueue = require('./models/messageQueue');
 
 /* Load protobuf helper methods */
 var pbhelper = require('../protobuf/protobufHelperFunctions')
@@ -44,7 +45,7 @@ module.exports = function(app) {
         /* Qurey DB. Continue iff idKey & did combo DNE */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
-                if ((!dbUser && !userContainsDeviceId(dbUser, deviceId) ) && !err) {
+                if ((!dbUser || !userContainsDeviceId(dbUser, deviceId) ) && !err) {
                     /* Verify date freshness */
                     var timeAuthDate = new Date(authDate);
                     var timeNow = new Date();
@@ -159,38 +160,44 @@ module.exports = function(app) {
         var Protoprekeys = builder.build("protoprekeys");
         var Prekeys = Protoprekeys.Prekeys;
         var Prekey = Protoprekeys.Prekey;
-        var Keypair = Protoprekeys.Keypair;
+        var KeyPair = Protoprekeys.KeyPair;
         var recievedPrekeys = Prekeys.decode(payload);
 
-        //console.log("recievedPrekeys: %j", recievedPrekeys);
+        ////console.log("payload: %j", payload);
+        ////console.log("recievedPrekeys - decode: %j", recievedPrekeys);
 
         /* Create DB Entry. New user and/or new device w/ prekeys */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
-                console.log("dbUSer: "+dbUser);
                 var prekeysArray = [];
                 for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
                     prekeysArray.push({
                         keyId : Number(recievedPrekeys.prekeys[i].id),
-                        key : recievedPrekeys.prekeys[i].toBuffer()
+                        key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
                     });
                 }
                 if(!err && dbUser) { //if identityKey exists
                     //add new device & keys to dbUser
                 } else if (!err && !dbUser) { //if identityKey DNE in DB
                     //create new document in db
+                    //console.log("RECIEVEDPREKEYS (DECODED): %j", recievedPrekeys.prekeys[0]);
+                    /////console.log("RECIEVEDPREKEYS (ENCODED): %j", recievedPrekeys.prekeys[1].toBuffer());
+                    /////console.log("RECIEVEDPREKEYS (ENCODED)type of: ", typeof(recievedPrekeys.prekeys[1].toBuffer()));
+                    ////console.log("RECIEVED PREKEYS: "+ typeof(recievedPrekeys.prekeys[1]));
                     Users.create({
                         identityKey : identityKey,
+                        revoked : false,
                         devices : [{
                             deviceId : deviceId,
                             lastresortKey :  {
                                 keyId : Number(recievedPrekeys.lastResortKey.id),
-                                key : recievedPrekeys.lastResortKey.toBuffer()
+                                key : JSON.stringify(recievedPrekeys.lastResortKey)
                             },
-                            prekeys : prekeysArray
+                            prekeys : prekeysArray //an array of stringified Prekey protobuf messages
                         }]
                     }, function(err, user) {
                         if (user && !err) {
+                            ////console.log("NEW USER: %j", user);
                             return res.sendStatus(200);
                         } else {
                             console.log("500 1");
@@ -206,42 +213,182 @@ module.exports = function(app) {
     });
 
     app.post('/api/v1/key/addDevice', /*<another auth scheme>,*/ function(req, res) {
+        //to be implemented in the future
         return res.sendStatus(403);
     });
 
     //Register prekeys
     app.post('/api/v1/key/update', auth, function(req, res) {
-        console.log("ACCESS GRANTED!!!!");
-        //var lastResortKey = req.body.body.lastResortKey;
-        //var prekeys = req.body.body.keys;
-        return res.sendStatus(200);
+        /* get basic_auth fields from request */
+        var user = basicAuth(req);
+        if (!user) {
+            return res.sendStatus(401);
+        }
+        var names = user.name.split(NAME_DELIMITER);
+        if (names.length != 2) {
+            return res.sendStatus(401);
+        }
+        var identityKey = names[0];
+        var deviceId = names[1];
+
+        /* Get protobuf payload */
+        var payload = req.body;
+
+        var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
+        var Protoprekeys = builder.build("protoprekeys");
+        var Prekeys = Protoprekeys.Prekeys;
+        var Prekey = Protoprekeys.Prekey;
+        var KeyPair = Protoprekeys.KeyPair;
+        var recievedPrekeys = Prekeys.decode(payload);
+
+        /* Create DB Entry. New user and/or new device w/ prekeys */
+        Users.findOne({identityKey : identityKey},
+            function(err, dbUser) {
+                var prekeysArray = [];
+                for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
+                    prekeysArray.push({
+                        keyId : Number(recievedPrekeys.prekeys[i].id),
+                        key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
+                    });
+                }
+                if(!err && dbUser) { //if identityKey exists
+                    //add new keys to dbUser's device
+                    for (var i=0; i<dbUser.devices.length; i++) {
+                        if (dbUser.devices[i].deviceId == deviceId) {
+                            break;
+                        }
+                    }
+                    if (i<dbUser.devices.length) {
+                        dbUser.devices[i].prekeys.concat(prekeysArray);
+                        dbUser.save(function(err) {
+                            if (err) {
+                                console.log(err);
+                                return res.sendStatus(500);
+                            } else {
+                                return res.sendStatus(200);
+                            }
+                        });
+                    } else {
+                        return res.sendStatus(500);
+                    }
+
+                } else { // else, error
+                    return res.sendStatus(500);
+                }
+            });
     });
 
-    //getting a recipients prekeys based on idkey and device key
+    //getting a recipients prekeys based on idkey
     app.get('/api/v1/key/', auth, function(req, res) {
-        var signature = req.body.signature;
-        var bodyToVerify = req.body.body;
+        var identityKey = req.body.identityKey;
+        /* Create DB Entry. New user and/or new device w/ prekeys */
+        Users.findOne({identityKey : identityKey},
+            function(err, dbUser) {
+                if (!err && dbUser) {
+                    var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
+                    var Protoprekeys = builder.build("protoprekeys");
+                    var Prekeys = Protoprekeys.Prekeys;
+                    var Prekey = Protoprekeys.Prekey;
+                    var KeyPair = Protoprekeys.KeyPair;
 
-        var identityKey = req.body.body.identityKey;
-        var deviceIdKey = req.body.body.deviceIdKey;
+                    var prekeysArray = [];
+                    for (var i=0; i<dbUser.devices.length; i++) {
+                        var prekey = dbUser.devices[i].prekeys.shift();
+                        /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
+                        console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
+                        prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
+                    }
+                    dbUser.save(function(err) {
+                        if (err) {
+                            return res.sendStatus(500);
+                        } else {
+                            /////console.log("PREKEYS AFTER DECODE: %j", prekeysArray);
+                            //var protoPrekeys = new Prekeys(null, prekeysArray);
+                            //protoPrekeys['prekeys'][0] = prekeysArray[0];
+                            //console.log("NEW CONSTRUCTION RESULT: %j", protoPrekeys);
+                            var protoPrekeys = pbhelper.constructKeysProtobuf(null, prekeysArray);
+                            console.log("PROTOPREKEYS: %j", protoPrekeys.prekeys[0]);
 
+                            res.set('Content-Type', 'application/octet-stream');
+                            return res.status(200).send(protoPrekeys.toBuffer()).end();
+                        }
+                    });
+
+                } else { //error || no dbUser
+                    return res.sendStatus(500);
+                }
+            }
+        );
     });
 
     //submitting a message
     app.post('/api/v1/message/', auth, function(req, res) {
-        var signature = req.body.signature;
-        var bodyToVerify = req.body.body;
+        for (var i=0; i<req.body.messages.length; i++) {
+            var messageBody = req.body.messages[i].body; //in form of protobuf
+            for (var j=0; j<req.body.messages[i].headers.length; j++) {
+                var recipient = req.body.messages[i].headers[j].recipient.split(NAME_DELIMITER);
+                var recipientIdKey = recipient[0];
+                var recipientDid = recipient[1];
+                var messageHeader = req.body.messages[i].headers[j].messageHeader;
 
-        for (var i=0; i<req.body.body.messages.length; i++) {
-            var message = req.body.body.messages[i].body;
-
-            for (var j=0; j<req.body.body.headers.length; j++) {
-                var deviceIdKey = req.body.body.headers.deviceIdKey;
-                var messageHeader = req.body.body.headers.messageHeader;
+                MessageQueue.create({
+                    recipientIdKey : recipientIdKey,
+                    recipientDid : recipientDid,
+                    messageHeader : messageHeader,
+                    messageBody : messageBody
+                }, function(err, message) {
+                    if (err || !message) { //if error putting messsage in queue
+                        console.log(err);
+                        return res.sendStatus(500);
+                    } else {
+                        return res.sendStatus(200);
+                    }
+                });
             }
         }
     });
 
+    app.delete('/api/v1/key/', auth, function(req, res) {
+        /* get basic_auth fields from request */
+        var user = basicAuth(req);
+        if (!user) {
+            return res.sendStatus(401);
+        }
+        var names = user.name.split(NAME_DELIMITER);
+        if (names.length != 2) {
+            return res.sendStatus(401);
+        }
+        var identityKey = names[0];
+        var deviceId = names[1];
+
+        Users.findOne({identityKey : identityKey}, function(err, dbUser) {
+            if (err || !dbUser) { //if error or user not found
+                return res.sendStatus(500);
+            } else {
+                for (var index=0; index<dbUser.devices.length; index++) {
+                    if (dbUser.devices[index].deviceId == deviceId) {
+                        break;
+                    }
+                }
+                if (index < index<dbUser.devices.length) {
+                    dbUser.devices.splice(index, 1);
+                    if (dbUser.devices.length < 1) {
+                        dbUser.revoked = true;
+                    }
+                    dbUser.save(function(err) {
+                        if (err) {
+                            console.log(err);
+                            return res.sendStatus(500);
+                        } else {
+                            return res.sendStatus(200);
+                        }
+                    });
+                } else {
+                    return res.sendStatus(500);
+                }
+            }
+        });
+    });
 
     /*****************************
     **** FOR TESTING PURPOSES ****
@@ -284,7 +431,7 @@ module.exports = function(app) {
         axol.generateIdentityKeyPair().then(function(idKeyPair) { // Generate our identity key
             axol.generateRegistrationId().then(function(registrationId) { // Generate our registration id
                 axol.generateLastResortPreKey().then(function(lastResortKey) { // Generate our last restore pre-key to send to the server
-                    axol.generatePreKeys(0, 100).then(function(preKeys) { // Generate the first set of our pre-keys to send to the server
+                    axol.generatePreKeys(0, 10).then(function(preKeys) { // Generate the first set of our pre-keys to send to the server
 
                         // Generate auth user names
                         var basicAuthUserName = base64.encode(idKeyPair.public);

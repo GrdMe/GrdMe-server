@@ -1,15 +1,15 @@
 package protoprekeys;
 
 // public/private keypair structure
-message Keypair {
+message KeyPair {
     optional bytes public = 1;
     optional bytes private = 2;
 }
 
 // singular prekey structure containing keypairs
 message Prekey {
-    optional int64 id = 1;
-    optional Keypair keypair = 2;
+    optional int32 id = 1;
+    optional KeyPair keyPair = 2;
 }
 
 

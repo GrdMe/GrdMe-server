@@ -4,12 +4,13 @@ var mongoose = require('mongoose');
 
 var userSchema = mongoose.Schema({
     identityKey: String, //base64 encoded pubkey
+    revoked: Boolean,
     devices: [{deviceId: Number, //int
                lastResortKey: {keyId: Number, //int
-                               key: Buffer //binary blob?
+                               key: Object//binary blob?
                            },
                 prekeys: [{keyId: Number,
-                           key: Buffer
+                           key: Object
                     }]
              }]
 });
