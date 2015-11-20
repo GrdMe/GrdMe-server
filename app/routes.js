@@ -26,26 +26,26 @@ module.exports = function(app) {
         var credentials = basicAuth(req);
         if(!credentials) {
             console.log("Authentication Failed - No basic_auth");
-            return unauthorized(res, 400);
+            return unauthorized(res, 'badly formed credentials');
         }
         var names = credentials.name.split(NAME_DELIMITER);
         if (names.length != 2 || !names[0] || !names[1]) {
             console.log("Authentication Failed - Badly Formed basic_auth name");
-            return unauthorized(res, 400);
+            return unauthorized(res, 'badly formed credentials');
         }
         var identityKey = names[0];
         var deviceId = names[1];
         var pass = credentials.pass.split(NAME_DELIMITER);
         if (pass.length != 2) {
             console.log("Authentication Failed - Badly Formed basic_auth pass");
-            return unauthorized(res, 400);
+            return unauthorized(res, 'badly formed credentials');
         }
         var authDate = Number(pass[0]);
         var authSig = pass[1];
         /* Qurey DB. Continue iff idKey & did combo DNE */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
-                if ((!dbUser || !userContainsDeviceId(dbUser, deviceId) ) && !err) {
+                if ((!dbUser && !userContainsDeviceId(dbUser, deviceId) ) && !err) {
                     /* Verify date freshness */
                     var timeAuthDate = new Date(authDate);
                     var timeNow = new Date();
@@ -64,15 +64,15 @@ module.exports = function(app) {
                             return next();
                         } else { // signature on date !verified
                             console.log("Authentication Failed - Bad signature");
-                            return unauthorized(res, 401);
+                            return unauthorized(res, 'signature');
                         }
                     } else { //else, auth is stale
                         console.log("Authentication Failed - Stale date");
-                        return unauthorized(res, 409);
+                        return unauthorized(res, 'time');
                     }
                 } else { // identityKey + did combo existed in DB
                     console.log("Authentication Failed - idkey/did exist in DB");
-                    return unauthorized(res, 422);
+                    return unauthorized(res, 'registered');
                 }
             });
     };
@@ -82,7 +82,7 @@ module.exports = function(app) {
         var user = basicAuth(req);
         if(!user) {
             console.log("Authentication Failed - No basic_auth");
-            return unauthorized(res, 400);
+            return unauthorized(res, 'badly formed credentials');
         }
         if (user && user.name && user.pass) {   // if username & password in basic_auth)
             /* Parse auth credentials */
@@ -90,14 +90,14 @@ module.exports = function(app) {
             var names = credentials.name.split(NAME_DELIMITER);
             if (names.length != 2) {
                 console.log("Authentication Failed - Badly Formed basic_auth name");
-                return unauthorized(res, 400);
+                return unauthorized(res, 'badly formed credentials');
             }
             var identityKey = names[0];
             var deviceId = names[1];
             var pass = credentials.pass.split(NAME_DELIMITER);
             if (names.length != 2) {
                 console.log("Authentication Failed - Badly Formed basic_auth pass");
-                return unauthorized(res, 400);
+                return unauthorized(res, 'badly formed credentials');
             }
             var authDate = Number(pass[0]);
             var authSig = base64.decode(pass[1]);
@@ -106,6 +106,9 @@ module.exports = function(app) {
             Users.findOne({identityKey : identityKey},
                 function(err, dbUser) {
                     if (dbUser && userContainsDeviceId(dbUser, deviceId) && !err) { //if identityKey & did exist is Users db
+                        if (dbUser.revoked == true) { //if idkey has been revoked
+                            return unauthorized(res, 'revoked');
+                        }
                         /* Verify date freshness */
                         var timeAuthDate = new Date(authDate);
                         var timeNow = new Date();
@@ -118,21 +121,21 @@ module.exports = function(app) {
                                 return next();
                             } else {
                                 console.log("Authentication Failed - Bad signature");
-                                return unauthorized(res, 401);
+                                return unauthorized(res, 'signature');
                             }
                         } else { //else, auth is stale
                             console.log("Authentication Failed - Stale date");
-                            return unauthorized(res, 409);
+                            return unauthorized(res, 'time');
                         }
                     } else { //identityKey & did !exist is Users db
                         console.log("Authentication Failed - idkey/did DNE in DB");
-                        return unauthorized(res, 404);
+                        return unauthorized(res, 'not registered');
                     }
                 }
             );
         } else { //if no basic_auth credentials
             console.log("Authentication Failed - No basic_auth");
-            return unauthorized(res, 400);
+            return unauthorized(res, 'badly formed credentials');
         }
     };
 
@@ -176,9 +179,7 @@ module.exports = function(app) {
                         key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
                     });
                 }
-                if(!err && dbUser) { //if identityKey exists
-                    //add new device & keys to dbUser
-                } else if (!err && !dbUser) { //if identityKey DNE in DB
+                if (!err && !dbUser) { //if identityKey DNE in DB
                     //create new document in db
                     //console.log("RECIEVEDPREKEYS (DECODED): %j", recievedPrekeys.prekeys[0]);
                     /////console.log("RECIEVEDPREKEYS (ENCODED): %j", recievedPrekeys.prekeys[1].toBuffer());
@@ -285,6 +286,9 @@ module.exports = function(app) {
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
                 if (!err && dbUser) {
+                    if (dbUser.revoked == true){ //if identityKey has been revoked
+                        return send.Status(410);
+                    }
                     var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
                     var Protoprekeys = builder.build("protoprekeys");
                     var Prekeys = Protoprekeys.Prekeys;
@@ -314,7 +318,9 @@ module.exports = function(app) {
                         }
                     });
 
-                } else { //error || no dbUser
+                } else if (!dbUser && !err) { //if identityKey not in db
+                    return res.sendStatus(404);
+                } else { // if error
                     return res.sendStatus(500);
                 }
             }
@@ -322,6 +328,7 @@ module.exports = function(app) {
     });
 
     //submitting a message
+        //**consider implementing checks for revoked recipient, stale device recipient, and mismatched idkey/did recipients
     app.post('/api/v1/message/', auth, function(req, res) {
         for (var i=0; i<req.body.messages.length; i++) {
             var messageBody = req.body.messages[i].body; //in form of protobuf
@@ -352,11 +359,11 @@ module.exports = function(app) {
         /* get basic_auth fields from request */
         var user = basicAuth(req);
         if (!user) {
-            return res.sendStatus(401);
+            return unauthorized(res, 'badly formed credentials');
         }
         var names = user.name.split(NAME_DELIMITER);
         if (names.length != 2) {
-            return res.sendStatus(401);
+            return unauthorized(res, 'badly formed credentials');
         }
         var identityKey = names[0];
         var deviceId = names[1];
@@ -508,32 +515,34 @@ module.exports = function(app) {
 
 /* Helper Functions */
 /* Helper function to deny access */
-var unauthorized = function (res, code) {
-    switch (code) {
-        case 401: //unauthorized (bad signature)
-            res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
-            return res.sendStatus(401)
+var unauthorized = function (res, error) {
+    res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
+    res.status(401);
+    switch (error) {
+        case 'signature': //unauthorized (bad signature)
+            return res.send('signature');
             break;
-        case 404: //Not Found (identityKey/did DNE in database)
-            return res.sendStatus(404)
+        case 'not registered': //Not Found (identityKey/did DNE in database)
+            return res.send('not registered');
             break;
-        case 409: //conflict (invalid time stamp)
-            var timeJson = {time: (new Date()).getTime()};
-            return res.status(409).json(timeJson);
+        case 'time': //conflict (invalid time stamp)
+            var serverTime = String((new Date()).getTime());
+            res.set('Server-Time', serverTime);
+            return res.send('time');
             break;
-        case 410: //gone (key revoked)
-            return res.sendStatus(410);
+        case 'revoked': //gone (key revoked)
+            return res.send('revoked');
             break;
-        case 422: //Unprocessable Entity (identityKey/did already exist in database)
-            return res.sendStatus(422);
+        case 'registered': //Unprocessable Entity (identityKey/did already exist in database)
+            return res.send('registered');
+            break;
+        case 'badly formed credentials':
+            return res.send('badly formed credentials');
             break;
         default:
-            return res.sendStatus(400); //Bad Request
+            return res.send();
             break;
     }
-
-    //res.set('WWW-Authenticate', 'Basic realm=Authorization Required');
-    return res.status(401).json(timeJson);
 };
 
 /* Helper function to determin if deviceId exists under IdentityKey */
