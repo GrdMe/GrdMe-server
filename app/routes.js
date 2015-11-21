@@ -185,17 +185,20 @@ module.exports = function(app) {
                     /////console.log("RECIEVEDPREKEYS (ENCODED): %j", recievedPrekeys.prekeys[1].toBuffer());
                     /////console.log("RECIEVEDPREKEYS (ENCODED)type of: ", typeof(recievedPrekeys.prekeys[1].toBuffer()));
                     ////console.log("RECIEVED PREKEYS: "+ typeof(recievedPrekeys.prekeys[1]));
+                    /* create devices object */
+                    var devicesObject = {numberOfDevices : 1};
+                    devicesObject[deviceId] = {
+                                                 deviceId : deviceId,
+                                                 lastresortKey :  {
+                                                                   keyId : Number(recievedPrekeys.lastResortKey.id),
+                                                                   key : JSON.stringify(recievedPrekeys.lastResortKey)
+                                                                  },
+                                                 prekeys : prekeysArray //an array of stringified Prekey protobuf messages
+                                                }
                     Users.create({
                         identityKey : identityKey,
                         revoked : false,
-                        devices : [{
-                            deviceId : deviceId,
-                            lastresortKey :  {
-                                keyId : Number(recievedPrekeys.lastResortKey.id),
-                                key : JSON.stringify(recievedPrekeys.lastResortKey)
-                            },
-                            prekeys : prekeysArray //an array of stringified Prekey protobuf messages
-                        }]
+                        devices : devicesObject
                     }, function(err, user) {
                         if (user && !err) {
                             ////console.log("NEW USER: %j", user);
@@ -254,25 +257,15 @@ module.exports = function(app) {
                 }
                 if(!err && dbUser) { //if identityKey exists
                     //add new keys to dbUser's device
-                    for (var i=0; i<dbUser.devices.length; i++) {
-                        if (dbUser.devices[i].deviceId == deviceId) {
-                            break;
+                    dbUser.devices[deviceId].prekeys.concat(prekeysArray);
+                    dbUser.save(function(err) {
+                        if (err) {
+                            console.log(err);
+                            return res.sendStatus(500);
+                        } else {
+                            return res.sendStatus(200);
                         }
-                    }
-                    if (i<dbUser.devices.length) {
-                        dbUser.devices[i].prekeys.concat(prekeysArray);
-                        dbUser.save(function(err) {
-                            if (err) {
-                                console.log(err);
-                                return res.sendStatus(500);
-                            } else {
-                                return res.sendStatus(200);
-                            }
-                        });
-                    } else {
-                        return res.sendStatus(500);
-                    }
-
+                    });
                 } else { // else, error
                     return res.sendStatus(500);
                 }
@@ -372,27 +365,19 @@ module.exports = function(app) {
             if (err || !dbUser) { //if error or user not found
                 return res.sendStatus(500);
             } else {
-                for (var index=0; index<dbUser.devices.length; index++) {
-                    if (dbUser.devices[index].deviceId == deviceId) {
-                        break;
-                    }
+                delete dbUser.devices[deviceId];
+                dbUser.devices.numberOfDevices -= 1;
+                if (dbUser.devices.numberOfDevices < 1) {
+                    dbUser.revoked = true;
                 }
-                if (index < index<dbUser.devices.length) {
-                    dbUser.devices.splice(index, 1);
-                    if (dbUser.devices.length < 1) {
-                        dbUser.revoked = true;
+                dbUser.save(function(err) {
+                    if (err) {
+                        console.log(err);
+                        return res.sendStatus(500);
+                    } else {
+                        return res.sendStatus(200);
                     }
-                    dbUser.save(function(err) {
-                        if (err) {
-                            console.log(err);
-                            return res.sendStatus(500);
-                        } else {
-                            return res.sendStatus(200);
-                        }
-                    });
-                } else {
-                    return res.sendStatus(500);
-                }
+                });
             }
         });
     });
@@ -545,12 +530,23 @@ var unauthorized = function (res, error) {
     }
 };
 
+var success = function(res, dbUser, idKey, did) {
+    if (!dbUser) {
+
+    } else {
+        if (dbUser.devices[did].prekeys.length > 0) {
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(205);
+        }
+    }
+}
+
 /* Helper function to determin if deviceId exists under IdentityKey */
 var userContainsDeviceId = function(user, did) {
     if (user) {
-        for (var i = 0; i < user.devices.length; i++) {
-            if (user.devices[i].deviceId == did)
-                return true;
+        if (user.devices[did]) {
+            return true;
         }
     }
     return false;

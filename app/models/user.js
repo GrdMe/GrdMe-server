@@ -5,16 +5,21 @@ var mongoose = require('mongoose');
 var userSchema = mongoose.Schema({
     identityKey: String, //base64 encoded pubkey
     revoked: Boolean,
-    devices: [{deviceId: Number, //int
-               lastResortKey: {keyId: Number, //int
-                               key: Object//binary blob?
-                           },
-                prekeys: [{keyId: Number,
-                           key: Object
-                    }]
-             }]
+    devices: Object //device object modeled below
 });
 
+/* ** devices object **
+{
+    numberOfDevices: Number,
 
-
+    <deviceId> :    {deviceId: Number,
+                     lastResortKey: {keyId: Number,
+                                     key: Object
+                                    },
+                     prekeys: [{keyId: Number,
+                                key: Object
+                              }]
+                    }
+}
+*/
 module.exports = mongoose.model('Users', userSchema);
