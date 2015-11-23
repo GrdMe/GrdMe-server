@@ -202,7 +202,9 @@ module.exports = function(app) {
                     }, function(err, user) {
                         if (user && !err) {
                             ////console.log("NEW USER: %j", user);
-                            return res.sendStatus(200);
+                            success(user, identityKey, deviceId, function(status) {
+                                return res.sendStatus(status);
+                            });
                         } else {
                             console.log("500 1");
                             console.log(err);
@@ -263,7 +265,9 @@ module.exports = function(app) {
                             console.log(err);
                             return res.sendStatus(500);
                         } else {
-                            return res.sendStatus(200);
+                            success(dbUser, identityKey, deviceId, function(status) {
+                                return res.sendStatus(status);
+                            });
                         }
                     });
                 } else { // else, error
@@ -274,6 +278,18 @@ module.exports = function(app) {
 
     //getting a recipients prekeys based on idkey
     app.get('/api/v1/key/', auth, function(req, res) {
+        /* get basic_auth fields from request */
+        var user = basicAuth(req);
+        if (!user) {
+            return res.sendStatus(401);
+        }
+        var names = user.name.split(NAME_DELIMITER);
+        if (names.length != 2) {
+            return res.sendStatus(401);
+        }
+        var authIdentityKey = names[0];
+        var authDeviceId = names[1];
+
         var identityKey = req.body.identityKey;
         /* Create DB Entry. New user and/or new device w/ prekeys */
         Users.findOne({identityKey : identityKey},
@@ -289,11 +305,13 @@ module.exports = function(app) {
                     var KeyPair = Protoprekeys.KeyPair;
 
                     var prekeysArray = [];
-                    for (var i=0; i<dbUser.devices.length; i++) {
-                        var prekey = dbUser.devices[i].prekeys.shift();
-                        /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
-                        console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
-                        prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
+                    for (var key in dbUser.devices) {
+                        if(key != 'numberOfDevices') {
+                            var prekey = dbUser.devices[key].prekeys.shift();
+                            /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
+                            console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
+                            prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
+                        }
                     }
                     dbUser.save(function(err) {
                         if (err) {
@@ -323,6 +341,18 @@ module.exports = function(app) {
     //submitting a message
         //**consider implementing checks for revoked recipient, stale device recipient, and mismatched idkey/did recipients
     app.post('/api/v1/message/', auth, function(req, res) {
+        /* get basic_auth fields from request */
+        var user = basicAuth(req);
+        if (!user) {
+            return res.sendStatus(401);
+        }
+        var names = user.name.split(NAME_DELIMITER);
+        if (names.length != 2) {
+            return res.sendStatus(401);
+        }
+        var identityKey = names[0];
+        var deviceId = names[1];
+
         for (var i=0; i<req.body.messages.length; i++) {
             var messageBody = req.body.messages[i].body; //in form of protobuf
             for (var j=0; j<req.body.messages[i].headers.length; j++) {
@@ -340,8 +370,11 @@ module.exports = function(app) {
                     if (err || !message) { //if error putting messsage in queue
                         console.log(err);
                         return res.sendStatus(500);
-                    } else {
-                        return res.sendStatus(200);
+                    } else if (i >= req.body.messages.length) {
+                        //console.log("STATUS : "+success(null, identityKey, deviceId));
+                        success(null, identityKey, deviceId, function(status) {
+                            return res.sendStatus(status);
+                        });
                     }
                 });
             }
@@ -530,17 +563,40 @@ var unauthorized = function (res, error) {
     }
 };
 
-var success = function(res, dbUser, idKey, did) {
-    if (!dbUser) {
+var success = function(user, idKey, did, callback) {
+    console.log("SUCCESS 0");
 
-    } else {
-        if (dbUser.devices[did].prekeys.length > 0) {
-            res.sendStatus(200);
+    if (user && did) {
+        console.log("SUCCESS 2.0");
+        if (user.devices[did].prekeys.length > 0) {
+            console.log("SUCCESS 2.1");
+            return callback(200);
         } else {
-            res.sendStatus(205);
+            console.log("SUCCESS 2.2");
+            return callback(205);
         }
+
+    } else if (!user && idKey && did) {
+        console.log("SUCCESS 1.0");
+        Users.findOne({identityKey : idKey}, function(err, dbUser) {
+            console.log("SUCCESS 1.1");
+            if (err || !dbUser) { //if error or user not found
+                console.log("SUCCESS 1.11");
+                return callback(500);
+            } else {
+                console.log("SUCCESS 1.2");
+                if (dbUser.devices[did].prekeys.length > 0) {
+                    console.log("SUCCESS 1.3");
+                    return callback(200);
+                } else {
+                    console.log("SUCCESS 1.4");
+                    return callback(205);
+                }
+            }
+        });
     }
-}
+    console.log("SUCCESS 3");
+};
 
 /* Helper function to determin if deviceId exists under IdentityKey */
 var userContainsDeviceId = function(user, did) {
