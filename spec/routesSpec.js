@@ -11,6 +11,9 @@ var app = server.app;
 /* Load protobuf helper methods */
 var pbhelper = require('../protobuf/protobufHelperFunctions')
 
+/* Constants */
+var NUMBER_PREKEYS_CREATED = 3;
+
 describe("Routes:", function(done) {
     var authUn;
     var authUnBadDid;
@@ -24,7 +27,7 @@ describe("Routes:", function(done) {
 
     it('Create Credentials & Keys for testing', function(done) {
         request(app)
-        .get('/test/axolotl')
+        .get('/test/axolotl/'+String(NUMBER_PREKEYS_CREATED))
         .end(function(err, res) {
             if (err) {
                 throw err;
@@ -204,6 +207,24 @@ describe("Routes:", function(done) {
                     // });
                 });
             });//end of 'Try Valid Credentials'
+            describe ('Consume all prekeys', function() {
+                it('should respond with 205', function(done) {
+                        request(app)
+                        .get('/api/v1/key/')
+                        .auth(authUn, authPass)
+                        .set('Content-Type', 'application/json')
+                        .send({identityKey : authUn.split("|")[0]})
+                        .parse(binaryParser)
+                        .end(function(err, res) {
+                            if (err) {
+                                throw err;
+                            }
+                            expect(res.status).toEqual(205);
+                            done();
+                        });
+
+                });
+            });//end of 'Consume all prekeys'
         }); //end of 'GET /api/v1/key/'
         describe('POST /api/v1/key/update/', function(){
             describe('Try Invalid Credentials: Bad Signature', function() {

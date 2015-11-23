@@ -189,7 +189,7 @@ module.exports = function(app) {
                     var devicesObject = {numberOfDevices : 1};
                     devicesObject[deviceId] = {
                                                  deviceId : deviceId,
-                                                 lastresortKey :  {
+                                                 lastResortKey :  {
                                                                    keyId : Number(recievedPrekeys.lastResortKey.id),
                                                                    key : JSON.stringify(recievedPrekeys.lastResortKey)
                                                                   },
@@ -251,16 +251,17 @@ module.exports = function(app) {
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
                 var prekeysArray = [];
-                for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
-                    prekeysArray.push({
-                        keyId : Number(recievedPrekeys.prekeys[i].id),
-                        key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
-                    });
-                }
                 if(!err && dbUser) { //if identityKey exists
+                    for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
+                        dbUser.devices[deviceId].prekeys.push({
+                            keyId : Number(recievedPrekeys.prekeys[i].id),
+                            key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
+                        });
+                    }
+
                     //add new keys to dbUser's device
-                    dbUser.devices[deviceId].prekeys.concat(prekeysArray);
-                    dbUser.save(function(err) {
+                    Users.update({_id : dbUser._id}, {devices : dbUser.devices}, function(err) {
+                    //dbUser.save(function(err) {
                         if (err) {
                             console.log(err);
                             return res.sendStatus(500);
@@ -307,13 +308,20 @@ module.exports = function(app) {
                     var prekeysArray = [];
                     for (var key in dbUser.devices) {
                         if(key != 'numberOfDevices') {
-                            var prekey = dbUser.devices[key].prekeys.shift();
-                            /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
-                            console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
-                            prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
+                            if (dbUser.devices[key].prekeys.length > 0) { // if there is a prekey left, fetch it
+                                console.log("NUMBER OF PREKEYS BEFORE SHIFT: "+dbUser.devices[key].prekeys.length);
+                                var prekey = dbUser.devices[key].prekeys.shift();
+                                /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
+                                //console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
+                                console.log("NUMBER OF PREKEYS AFTER SHIFT: "+dbUser.devices[key].prekeys.length);
+                                prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
+                            } else { //if no prekey left, fetch last resort key
+                                prekeysArray.push(JSON.parse(dbUser.devices[key].lastResortKey.key));
+                            }
                         }
                     }
-                    dbUser.save(function(err) {
+                    Users.update({_id : dbUser._id}, {devices : dbUser.devices}, function(err) {
+                    //dbUser.save(function(err) {
                         if (err) {
                             return res.sendStatus(500);
                         } else {
@@ -325,7 +333,9 @@ module.exports = function(app) {
                             console.log("PROTOPREKEYS: %j", protoPrekeys.prekeys[0]);
 
                             res.set('Content-Type', 'application/octet-stream');
-                            return res.status(200).send(protoPrekeys.toBuffer()).end();
+                            success(null, authIdentityKey, authDeviceId, function(status) {
+                                return res.status(status).send(protoPrekeys.toBuffer()).end();
+                            });
                         }
                     });
 
@@ -451,12 +461,12 @@ module.exports = function(app) {
         return res.sendStatus(200);
     });
 
-    app.get('/test/axolotl', function(req, res) {
+    app.get('/test/axolotl/:numPrekeys', function(req, res) {
         var result;
         axol.generateIdentityKeyPair().then(function(idKeyPair) { // Generate our identity key
             axol.generateRegistrationId().then(function(registrationId) { // Generate our registration id
                 axol.generateLastResortPreKey().then(function(lastResortKey) { // Generate our last restore pre-key to send to the server
-                    axol.generatePreKeys(0, 10).then(function(preKeys) { // Generate the first set of our pre-keys to send to the server
+                    axol.generatePreKeys(0, req.params.numPrekeys-1).then(function(preKeys) { // Generate the first set of our pre-keys to send to the server
 
                         // Generate auth user names
                         var basicAuthUserName = base64.encode(idKeyPair.public);
