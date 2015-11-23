@@ -574,38 +574,26 @@ var unauthorized = function (res, error) {
 };
 
 var success = function(user, idKey, did, callback) {
-    console.log("SUCCESS 0");
-
     if (user && did) {
-        console.log("SUCCESS 2.0");
         if (user.devices[did].prekeys.length > 0) {
-            console.log("SUCCESS 2.1");
             return callback(200);
         } else {
-            console.log("SUCCESS 2.2");
             return callback(205);
         }
 
     } else if (!user && idKey && did) {
-        console.log("SUCCESS 1.0");
         Users.findOne({identityKey : idKey}, function(err, dbUser) {
-            console.log("SUCCESS 1.1");
             if (err || !dbUser) { //if error or user not found
-                console.log("SUCCESS 1.11");
                 return callback(500);
             } else {
-                console.log("SUCCESS 1.2");
                 if (dbUser.devices[did].prekeys.length > 0) {
-                    console.log("SUCCESS 1.3");
                     return callback(200);
                 } else {
-                    console.log("SUCCESS 1.4");
                     return callback(205);
                 }
             }
         });
     }
-    console.log("SUCCESS 3");
 };
 
 /* Helper function to determin if deviceId exists under IdentityKey */
