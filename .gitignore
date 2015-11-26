@@ -1,3 +1,4 @@
+config/productionPaths.js
 node_modules
 grd_me.xpi
 npm-debug.log
