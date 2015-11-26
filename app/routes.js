@@ -107,7 +107,6 @@ module.exports = function(app) {
                 function(err, dbUser) {
                     if (dbUser && userContainsDeviceId(dbUser, deviceId) && !err) { //if identityKey & did exist is Users db
                         if (dbUser.revoked == true) { //if idkey has been revoked
-                            console.log("FOUR");
                             return unauthorized(res, 'revoked');
                         }
                         /* Verify date freshness */
@@ -414,8 +413,7 @@ module.exports = function(app) {
                 if (dbUser.devices.numberOfDevices < 1) {
                     dbUser.revoked = true;
                 }
-                Users.update({_id : dbUser._id}, {devices : dbUser.devices, revoked : dbUser.revoked}, function(err) {
-                //dbUser.save(function(err) {
+                dbUser.save(function(err) {
                     if (err) {
                         console.log(err);
                         return res.sendStatus(500);
