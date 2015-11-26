@@ -240,7 +240,6 @@ module.exports = function(app) {
 
         /* Get protobuf payload */
         var payload = req.body;
-
         var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
         var Protoprekeys = builder.build("protoprekeys");
         var Prekeys = Protoprekeys.Prekeys;
@@ -248,21 +247,28 @@ module.exports = function(app) {
         var KeyPair = Protoprekeys.KeyPair;
         var recievedPrekeys = Prekeys.decode(payload);
 
-        /* Create DB Entry. New user and/or new device w/ prekeys */
+        /* Query DB for user to be updated */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
                 var prekeysArray = [];
                 if(!err && dbUser) { //if identityKey exists
+                    /* add prekeys to device */
                     for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
                         dbUser.devices[deviceId].prekeys.push({
                             keyId : Number(recievedPrekeys.prekeys[i].id),
                             key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
                         });
                     }
+                    /* update device's lastResortKey */
+                    if (recievedPrekeys.lastResortKey) {
+                        dbUser.devices[deviceId].lastResortKey = {
+                            keyId : Number(recievedPrekeys.lastResortKey.id),
+                            key : JSON.stringify(recievedPrekeys.lastResortKey)
+                        };
+                    }
 
-                    //add new keys to dbUser's device
+                    //save new keys to dbUser's device
                     Users.update({_id : dbUser._id}, {devices : dbUser.devices}, function(err) {
-                    //dbUser.save(function(err) {
                         if (err) {
                             console.log(err);
                             return res.sendStatus(500);
