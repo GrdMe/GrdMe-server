@@ -15,7 +15,17 @@
     // configuration ===========================================================
     var limiter = rateLimit({/* config */});
     //app.use(limiter);
-    app.use(morgan('dev'));                                         // log every request to the console
+    switch(process.env.NODE_ENV){
+        case 'development':
+            app.use(morgan('dev'));                                         // log every request to the console
+            break;
+        case 'production':
+            app.use(morgan('common'));                                         // log every request to the console
+            break;
+        default:
+            app.use(morgan('dev'));                                         // log every request to the console
+            break;
+    }
     app.use(bodyParser.urlencoded({'extended':'true'}));            // parse application/x-www-form-urlencoded
     app.use(bodyParser.json());                                     // parse application/json
     app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse application/vnd.api+json as json
@@ -36,9 +46,32 @@
 
 
     // listen ==================================================================
-    var server = app.listen(8080, function () {
-        console.log('Grd Me sever listening at http://11.12.13.14:8080');
-    });
+    var server;
+    switch(process.env.NODE_ENV){
+        case 'development':
+            server = app.listen(8080, function() {
+                console.log('Grd Me sever listening at port 8080');
+            });
+            break;
+        case 'production':
+            var fs       = require('fs');
+            var https    = require('https');
+            var httpsConfig = require('./config/productionPaths');
+            var privateKey  = fs.readFileSync(httpsConfig.privateKeyPath);
+            var certificate = fs.readFileSync(httpsConfig.certificatePath);
+            var credentials = {key: privateKey, cert: certificate};
+            var server = https.createServer(credentials, app);
+            server.listen(443, function () {
+                console.log('Grd Me sever listening at port 443');
+            });
+            break;
+
+        default:
+            server = app.listen(8080, function() {
+                console.log('Grd Me sever listening at port 8080');
+            });
+            break;
+    }
 
     exports.close = function() {
         server.close();
