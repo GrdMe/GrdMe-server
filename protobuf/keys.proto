@@ -8,8 +8,9 @@ message KeyPair {
 
 // singular prekey structure containing keypairs
 message Prekey {
-    optional int32 id = 1;
-    optional KeyPair keyPair = 2;
+    optional string deviceId = 1;
+    optional int32 id = 2;
+    optional KeyPair keyPair = 3;
 }
 
 

@@ -15,7 +15,7 @@ var str2ab = function(str) {
 };
 module.exports.str2ab = str2ab;
 
-var constructKeysProtobuf = function (lastResortKey, prekeys){
+var constructKeysProtobuf = function (did, lastResortKey, prekeys){
     var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
     var Protoprekeys = builder.build("protoprekeys");
     var Prekeys = Protoprekeys.Prekeys;
@@ -24,14 +24,14 @@ var constructKeysProtobuf = function (lastResortKey, prekeys){
 
     var protoLastResortKey;
     if (lastResortKey) {
-        protoLastResortKey = new Prekey(Number(lastResortKey.id), new KeyPair(ab2str(lastResortKey.keyPair.public.buffer || lastResortKey.keyPair.public), ab2str(lastResortKey.keyPair.private.buffer || lastResortKey.keyPair.private)));
+        protoLastResortKey = new Prekey(String(did), Number(lastResortKey.id), new KeyPair(ab2str(lastResortKey.keyPair.public.buffer || lastResortKey.keyPair.public), ab2str(lastResortKey.keyPair.private.buffer || lastResortKey.keyPair.private)));
     } else {
         protoLastResortKey = null;
     }
 
     var protoPrekeys = new Prekeys(protoLastResortKey);
     for (var i=0; i<prekeys.length; i++) {
-        protoPrekeys['prekeys'][i] = new Prekey(prekeys[i].id, new KeyPair(ab2str(prekeys[i].keyPair.public || prekeys[i].keyPair.public), ab2str(prekeys[i].keyPair.private || prekeys[i].keyPair.private)));
+        protoPrekeys['prekeys'][i] = new Prekey(String(did), prekeys[i].id, new KeyPair(ab2str(prekeys[i].keyPair.public || prekeys[i].keyPair.public), ab2str(prekeys[i].keyPair.private || prekeys[i].keyPair.private)));
     }
     return protoPrekeys;
 };

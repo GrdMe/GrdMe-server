@@ -53,7 +53,7 @@ describe("Routes:", function(done) {
     });
 
     it('Create Prekeys protobuf', function(done) {
-        protoPrekeys = pbhelper.constructKeysProtobuf(lastResortKey, prekeys);
+        protoPrekeys = pbhelper.constructKeysProtobuf(authUn.split("|")[1], lastResortKey, prekeys);
         ////console.log("PROTOPREKEYS FRPM TEST: %j", protoPrekeys);
         done();
     });

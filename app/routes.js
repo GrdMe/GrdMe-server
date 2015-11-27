@@ -316,12 +316,13 @@ module.exports = function(app) {
                     for (var key in dbUser.devices) {
                         if(key != 'numberOfDevices') {
                             if (dbUser.devices[key].prekeys.length > 0) { // if there is a prekey left, fetch it
-                                console.log("NUMBER OF PREKEYS BEFORE SHIFT: "+dbUser.devices[key].prekeys.length);
+                                //console.log("NUMBER OF PREKEYS BEFORE SHIFT: "+dbUser.devices[key].prekeys.length);
                                 var prekey = dbUser.devices[key].prekeys.shift();
                                 /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
                                 //console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
-                                console.log("NUMBER OF PREKEYS AFTER SHIFT: "+dbUser.devices[key].prekeys.length);
-                                prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
+                                //console.log("NUMBER OF PREKEYS AFTER SHIFT: "+dbUser.devices[key].prekeys.length);
+                                prekeysArray.push(new Prekey(String(dbUser.devices[key].deviceId), prekey.id, new KeyPair(pbhelper.ab2str(JSON.parse(prekey.key).keyPair.public), pbhelper.ab2str(JSON.parse(prekey.key).keyPair.private))));
+                                //prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
                             } else { //if no prekey left, fetch last resort key
                                 prekeysArray.push(JSON.parse(dbUser.devices[key].lastResortKey.key));
                             }
@@ -336,7 +337,8 @@ module.exports = function(app) {
                             //var protoPrekeys = new Prekeys(null, prekeysArray);
                             //protoPrekeys['prekeys'][0] = prekeysArray[0];
                             //console.log("NEW CONSTRUCTION RESULT: %j", protoPrekeys);
-                            var protoPrekeys = pbhelper.constructKeysProtobuf(null, prekeysArray);
+                            //var protoPrekeys = pbhelper.constructKeysProtobuf('test', null, prekeysArray);
+                            var protoPrekeys = new Prekeys(null, prekeysArray);
                             console.log("PROTOPREKEYS: %j", protoPrekeys.prekeys[0]);
 
                             res.set('Content-Type', 'application/octet-stream');
