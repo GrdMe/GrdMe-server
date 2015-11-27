@@ -321,7 +321,7 @@ module.exports = function(app) {
                                 /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
                                 //console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
                                 //console.log("NUMBER OF PREKEYS AFTER SHIFT: "+dbUser.devices[key].prekeys.length);
-                                prekeysArray.push(new Prekey(String(dbUser.devices[key].deviceId), prekey.id, new KeyPair(pbhelper.ab2str(JSON.parse(prekey.key).keyPair.public), pbhelper.ab2str(JSON.parse(prekey.key).keyPair.private))));
+                                prekeysArray.push(new Prekey(String(dbUser.devices[key].deviceId), prekey.keyId, new KeyPair(pbhelper.ab2str(JSON.parse(prekey.key).keyPair.public), pbhelper.ab2str(JSON.parse(prekey.key).keyPair.private))));
                                 //prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
                             } else { //if no prekey left, fetch last resort key
                                 prekeysArray.push(JSON.parse(dbUser.devices[key].lastResortKey.key));

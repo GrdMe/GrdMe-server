@@ -189,7 +189,27 @@ describe("Routes:", function(done) {
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
                     .parse(binaryParser)
-                    .expect(200, done);
+                    //.expect(200, done);
+                    .end(function(err, res) {
+                        if(err) {
+                            throw err;
+                        }
+                        expect(res.status).toEqual(200);
+
+                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
+                        var Protoprekeys = builder.build("protoprekeys");
+                        var Prekeys = Protoprekeys.Prekeys;
+                        var Prekey = Protoprekeys.Prekey;
+                        var KeyPair = Protoprekeys.KeyPair;
+                        console.log("JASMINE RECIEVED: %j", Prekeys.decode(res.body).prekeys[0]);
+                        console.log("EXPECTED........: %j", Prekey.decode(protoPrekeys.prekeys[0].toBuffer()).keyPair);
+                        expect(Prekeys.decode(res.body).prekeys[0].deviceId).toEqual(protoPrekeys.prekeys[0].deviceId);
+                        expect(Prekeys.decode(res.body).prekeys[0].id).toEqual(protoPrekeys.prekeys[0].id);
+                        var recievedPub = Prekeys.decode(res.body).prekeys[0].keyPair.public;
+                        var expectedPub = protoPrekeys.prekeys[0].keyPair.public;
+                        expect(pbhelper.str2ab(recievedPub)).toEqual(pbhelper.str2ab(expectedPub));
+                        done();
+                    });
                 });
             });//end of 'Try Valid Credentials'
             describe ('Consume all prekeys', function() {

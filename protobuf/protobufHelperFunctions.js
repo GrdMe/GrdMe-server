@@ -24,14 +24,14 @@ var constructKeysProtobuf = function (did, lastResortKey, prekeys){
 
     var protoLastResortKey;
     if (lastResortKey) {
-        protoLastResortKey = new Prekey(String(did), Number(lastResortKey.id), new KeyPair(ab2str(lastResortKey.keyPair.public.buffer || lastResortKey.keyPair.public), ab2str(lastResortKey.keyPair.private.buffer || lastResortKey.keyPair.private)));
+        protoLastResortKey = new Prekey(String(did), Number(lastResortKey.id), new KeyPair(ab2str(lastResortKey.keyPair.public), ab2str(lastResortKey.keyPair.private)));
     } else {
         protoLastResortKey = null;
     }
 
     var protoPrekeys = new Prekeys(protoLastResortKey);
     for (var i=0; i<prekeys.length; i++) {
-        protoPrekeys['prekeys'][i] = new Prekey(String(did), prekeys[i].id, new KeyPair(ab2str(prekeys[i].keyPair.public || prekeys[i].keyPair.public), ab2str(prekeys[i].keyPair.private || prekeys[i].keyPair.private)));
+        protoPrekeys['prekeys'][i] = new Prekey(String(did), prekeys[i].id, new KeyPair(ab2str(prekeys[i].keyPair.public), ab2str(prekeys[i].keyPair.private)));
     }
     return protoPrekeys;
 };
