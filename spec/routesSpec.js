@@ -309,6 +309,37 @@ describe("Routes:", function(done) {
                         done();
                     });
                 });
+                it('fetching keys should respond with 200 & list of matching prekeys', function(done){
+                    request(app)
+                    .get('/api/v1/key/')
+                    .auth(authUn, authPass)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split("|")[0]})
+                    .parse(binaryParser)
+                    //.expect(200, done);
+                    .end(function(err, res) {
+                        if(err) {
+                            throw err;
+                        }
+                        expect(res.status).toEqual(200);
+                        //get protobuf builder
+                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto");
+                        var Protoprekeys = builder.build("protoprekeys");
+                        var Prekeys = Protoprekeys.Prekeys;
+                        var Prekey = Protoprekeys.Prekey;
+                        var KeyPair = Protoprekeys.KeyPair;
+                        //expect deviceId to match
+                        expect(Prekeys.decode(res.body).prekeys[0].deviceId).toEqual(protoPrekeys.prekeys[0].deviceId);
+                        //expect key id to match
+                        expect(Prekeys.decode(res.body).prekeys[0].id).toEqual(protoPrekeys.prekeys[0].id);
+                        var recievedPub = Prekeys.decode(res.body).prekeys[0].keyPair.public;
+                        var expectedPub = protoPrekeys.prekeys[0].keyPair.public;
+                        //expect public key to match
+                        expect(pbhelper.str2ab(recievedPub)).toEqual(pbhelper.str2ab(expectedPub));
+                        done();
+                    });
+                });
+
             });//end of 'Valid Credentials'
         }); //end of 'POST /api/v1/key/update'
         describe('POST /api/v1/message/', function(){
@@ -344,12 +375,18 @@ describe("Routes:", function(done) {
                         done();
                     });
                 });
-                it('should respond with 200', function(done){
+                it('should respond with 200 & '+numMessages+' messagesQueued', function(done){
                     request(app)
                     .post('/api/v1/message/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
                     .send({messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()}], body: protoPrekeys.toBuffer()}]})
+                    .expect(function(res) {
+                        res.body.messagesQueued = numMessages;
+                        //res.body.keysNotFound.length = 0;
+                        //res.body.revokedKeys.length = 0;
+                        //res.body.missingDevices.length = 0;
+                    })
                     .expect(200, done);
                 });
                     //var numMessages = messagesJson.messages.length;

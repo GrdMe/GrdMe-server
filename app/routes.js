@@ -372,27 +372,52 @@ module.exports = function(app) {
         var identityKey = names[0];
         var deviceId = names[1];
 
+        var responseBody = {
+            messagesQueued : 0,
+            keysNotFound : [],
+            revokedKeys : [],
+            missingDevices : []
+        };
+
+        /* iterate through messages */
         for (var i=0; i<req.body.messages.length; i++) {
             var messageBody = req.body.messages[i].body; //in form of protobuf
+            /* iterate through headers (recipients) for each message */
             for (var j=0; j<req.body.messages[i].headers.length; j++) {
                 var recipient = req.body.messages[i].headers[j].recipient.split(NAME_DELIMITER);
+                var messageHeader = req.body.messages[i].headers[j].messageHeader;
                 var recipientIdKey = recipient[0];
                 var recipientDid = recipient[1];
-                var messageHeader = req.body.messages[i].headers[j].messageHeader;
-
-                MessageQueue.create({
-                    recipientIdKey : recipientIdKey,
-                    recipientDid : recipientDid,
-                    messageHeader : messageHeader,
-                    messageBody : messageBody
-                }, function(err, message) {
-                    if (err || !message) { //if error putting messsage in queue
+                /* check if valid recipientIdKey */
+                Users.findOne({identityKey : recipientIdKey}, function(err, recipientUser) {
+                    if (err) { //if error
                         console.log(err);
                         return res.sendStatus(500);
-                    } else if (i >= req.body.messages.length) {
-                        //console.log("STATUS : "+success(null, identityKey, deviceId));
-                        success(null, identityKey, deviceId, function(status) {
-                            return res.sendStatus(status);
+                    } else if (!recipientUser) { //if recipientIdKey DNE in DB
+                        responseBody.keysNotFound.push(req.body.messages[i].headers[j].recipient);
+                    } else if (recipientUser.revoked) { //if recipientIdKey is revoked
+                        responseBody.revokedKeys.push(req.body.messages[i].headers[j].recipient);
+                    } else if (!userContainsDeviceId(recipientUser, deviceId)) { //if device does not belong to identityKey
+                        responseBody.missingDevices.push(req.body.messages[i].headers[j].recipient);
+                    } else { //else, queue message
+                        /* queue message */
+                        MessageQueue.create({
+                            recipientIdKey : recipientIdKey,
+                            recipientDid : recipientDid,
+                            messageHeader : messageHeader,
+                            messageBody : messageBody
+                        }, function(err, message) {
+                            if (err || !message) { //if error putting messsage in queue
+                                console.log(err);
+                                return res.sendStatus(500);
+                            } else {
+                                responseBody.messagesQueued += 1;
+                                if (i >= req.body.messages.length) {
+                                    success(null, identityKey, deviceId, function(status) {
+                                        return res.status(status).send(messageBody);
+                                    });
+                                }
+                            }
                         });
                     }
                 });
@@ -438,7 +463,6 @@ module.exports = function(app) {
     /*****************************
     **** FOR TESTING PURPOSES ****
     *****************************/
-    /**/ var request = require("request");
     /**/ var axolotl = require("axolotl");
     /**/ var store = {
     /**/     getLocalIdentityKeyPair : function() {},

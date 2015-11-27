@@ -15,8 +15,7 @@
     "method-override": "latest",
     "mongoose": "latest",
     "morgan": "latest",
-    "protobufjs": "latest",
-    "request": "latest"
+    "protobufjs": "latest"
   },
   "scripts": {
     "start": "node server.js",
