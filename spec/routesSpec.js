@@ -54,7 +54,6 @@ describe("Routes:", function(done) {
 
     it('Create Prekeys protobuf', function(done) {
         protoPrekeys = pbhelper.constructKeysProtobuf(authUn.split("|")[1], lastResortKey, prekeys);
-        ////console.log("PROTOPREKEYS FRPM TEST: %j", protoPrekeys);
         done();
     });
 
@@ -182,7 +181,7 @@ describe("Routes:", function(done) {
                 });
             });//end of 'Try Invalid Credentials'
             describe('Try Valid Credentials', function() {
-                it('should respond with 200 & list of prekeys', function(done){
+                it('should respond with 200 & list of matching prekeys', function(done){
                     request(app)
                     .get('/api/v1/key/')
                     .auth(authUn, authPass)
@@ -195,18 +194,19 @@ describe("Routes:", function(done) {
                             throw err;
                         }
                         expect(res.status).toEqual(200);
-
-                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
+                        //get protobuf builder
+                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto");
                         var Protoprekeys = builder.build("protoprekeys");
                         var Prekeys = Protoprekeys.Prekeys;
                         var Prekey = Protoprekeys.Prekey;
                         var KeyPair = Protoprekeys.KeyPair;
-                        console.log("JASMINE RECIEVED: %j", Prekeys.decode(res.body).prekeys[0]);
-                        console.log("EXPECTED........: %j", Prekey.decode(protoPrekeys.prekeys[0].toBuffer()).keyPair);
+                        //expect deviceId to match
                         expect(Prekeys.decode(res.body).prekeys[0].deviceId).toEqual(protoPrekeys.prekeys[0].deviceId);
+                        //expect key id to match
                         expect(Prekeys.decode(res.body).prekeys[0].id).toEqual(protoPrekeys.prekeys[0].id);
                         var recievedPub = Prekeys.decode(res.body).prekeys[0].keyPair.public;
                         var expectedPub = protoPrekeys.prekeys[0].keyPair.public;
+                        //expect public key to match
                         expect(pbhelper.str2ab(recievedPub)).toEqual(pbhelper.str2ab(expectedPub));
                         done();
                     });
@@ -231,6 +231,35 @@ describe("Routes:", function(done) {
                 it('device should have no prekeys', function(done){
                     Users.findOne({identityKey : authUn.split("|")[0]}, function(err, dbUser) {
                         expect(dbUser.devices[authUn.split("|")[1]].prekeys.length).toEqual(0);
+                        done();
+                    });
+                });
+                it('should respond with 205 & lastResortKey', function(done) {
+                    request(app)
+                    .get('/api/v1/key/')
+                    .auth(authUn, authPass)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split("|")[0]})
+                    .parse(binaryParser)
+                    .end(function(err, res) {
+                        if (err) {
+                            throw err;
+                        }
+                        expect(res.status).toEqual(205);
+                        //get protobuf builder
+                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto");
+                        var Protoprekeys = builder.build("protoprekeys");
+                        var Prekeys = Protoprekeys.Prekeys;
+                        var Prekey = Protoprekeys.Prekey;
+                        var KeyPair = Protoprekeys.KeyPair;
+                        //expect deviceId to match
+                        expect(Prekeys.decode(res.body).prekeys[0].deviceId).toEqual(authUn.split("|")[1]);
+                        //expect key id to match
+                        expect(Prekeys.decode(res.body).prekeys[0].id).toEqual(lastResortKey.id);
+                        var recievedPub = Prekeys.decode(res.body).prekeys[0].keyPair.public;
+                        var expectedPub = lastResortKey.keyPair.public;
+                        //expect public key to match
+                        expect(pbhelper.str2ab(recievedPub)).toEqual(pbhelper.str2ab(expectedPub));
                         done();
                     });
                 });

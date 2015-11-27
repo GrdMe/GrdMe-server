@@ -324,7 +324,7 @@ module.exports = function(app) {
                                 prekeysArray.push(new Prekey(String(dbUser.devices[key].deviceId), prekey.keyId, new KeyPair(pbhelper.ab2str(JSON.parse(prekey.key).keyPair.public), pbhelper.ab2str(JSON.parse(prekey.key).keyPair.private))));
                                 //prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
                             } else { //if no prekey left, fetch last resort key
-                                prekeysArray.push(JSON.parse(dbUser.devices[key].lastResortKey.key));
+                                prekeysArray.push(new Prekey(String(dbUser.devices[key].deviceId), dbUser.devices[key].lastResortKey.keyId, new KeyPair(pbhelper.ab2str(JSON.parse(dbUser.devices[key].lastResortKey.key).keyPair.public), pbhelper.ab2str(JSON.parse(dbUser.devices[key].lastResortKey.key).keyPair.private))));
                             }
                         }
                     }
