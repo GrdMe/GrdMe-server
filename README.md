@@ -35,10 +35,11 @@ This is a synced directory with the project folder on your host machine. Any cha
 To start the server, run the following commands in /vagrant on the virtual machine:
 ```bash
 npm install
-node server.js
+npm start
 ```
 To run tests, run:
 ```bash
+npm install
 npm test
 ```
 ### 4. Stopping Vagrant
