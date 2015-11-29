@@ -358,8 +358,10 @@ module.exports = function(app) {
     });
 
     //submitting a message
-        //**consider implementing checks for revoked recipient, stale device recipient, and mismatched idkey/did recipients
     app.post('/api/v1/message/', auth, function(req, res) {
+        /* get clients object from push socket */
+        var clients = require('../push/socket').clients;
+
         /* get basic_auth fields from request */
         var user = basicAuth(req);
         if (!user) {
