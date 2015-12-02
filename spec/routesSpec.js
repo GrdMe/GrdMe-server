@@ -5,7 +5,6 @@
 var request = require('supertest');
 var server = require('../server');
 var express = require('express');
-var protoBuf = require('protobufjs');
 var app = server.app;
 
 /* database setup */
@@ -27,7 +26,7 @@ var options ={
 
 
 /* Load protobuf helper methods */
-var pbhelper = require('../protobuf/protobufHelperFunctions')
+var helper = require('../app/helperFunctions');
 
 /* Constants */
 var NUMBER_PREKEYS_CREATED = 3;
@@ -42,6 +41,7 @@ var authPassPast;
 var prekeys; //array of array buffer prekeys
 var lastResortKey; //singular array buffer prekey
 var protoPrekeys; //sungular protobuf "prekeys" message
+var prekeysObj;
 
 
 describe("Routes:", function(done) {
@@ -61,14 +61,11 @@ describe("Routes:", function(done) {
             authPassPast = res.body.pastPassword;
             lastResortKey = res.body.lastResortKey;
             prekeys = res.body.preKeys;
+            prekeysObj = helper.prekeysObjectConstructor(lastResortKey, prekeys);
             done();
         });
     });
 
-    it('Create Prekeys protobuf', function(done) {
-        protoPrekeys = pbhelper.constructKeysProtobuf(authUn.split("|")[1], lastResortKey, prekeys);
-        done();
-    });
 
     describe("Sockets:", function(){
         describe("Auth not registered", function(){
@@ -124,16 +121,16 @@ describe("Routes:", function(done) {
                     request(app)
                     .post('/api/v1/key/initial/')
                     .auth(authUn, authPassBadSig)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect(401, 'signature', done);
                 });
                 it('Future Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
                     request(app)
                     .post('/api/v1/key/initial/')
                     .auth(authUn, authPassFuture)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
@@ -141,8 +138,8 @@ describe("Routes:", function(done) {
                     request(app)
                     .post('/api/v1/key/initial/')
                     .auth(authUn, authPassPast)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
@@ -153,8 +150,8 @@ describe("Routes:", function(done) {
                     request(app)
                     .post('/api/v1/key/initial/')
                     .auth(authUn, authPass)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect(200, done);
                 });
                 it('new user should be in database', function(done){
@@ -202,7 +199,6 @@ describe("Routes:", function(done) {
                     .auth(authUn, authPassBadSig)
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
-                    //.parse(binaryParser)
                     .expect(401, 'signature', done);
                 });
                 it('Future Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
@@ -211,7 +207,6 @@ describe("Routes:", function(done) {
                     .auth(authUn, authPassFuture)
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
-                    //.parse(binaryParser)
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
@@ -221,7 +216,6 @@ describe("Routes:", function(done) {
                     .auth(authUn, authPassPast)
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
-                    //.parse(binaryParser)
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
@@ -233,27 +227,17 @@ describe("Routes:", function(done) {
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
-                    .parse(binaryParser)
                     //.expect(200, done);
                     .end(function(err, res) {
                         if(err) {
                             throw err;
                         }
                         expect(res.status).toEqual(200);
-                        //get protobuf builder
-                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto");
-                        var Protoprekeys = builder.build("protoprekeys");
-                        var Prekeys = Protoprekeys.Prekeys;
-                        var Prekey = Protoprekeys.Prekey;
-                        var KeyPair = Protoprekeys.KeyPair;
-                        //expect deviceId to match
-                        expect(Prekeys.decode(res.body).prekeys[0].deviceId).toEqual(protoPrekeys.prekeys[0].deviceId);
-                        //expect key id to match
-                        expect(Prekeys.decode(res.body).prekeys[0].id).toEqual(protoPrekeys.prekeys[0].id);
-                        var recievedPub = Prekeys.decode(res.body).prekeys[0].keyPair.public;
-                        var expectedPub = protoPrekeys.prekeys[0].keyPair.public;
-                        //expect public key to match
-                        expect(pbhelper.str2ab(recievedPub)).toEqual(pbhelper.str2ab(expectedPub));
+                        //expect prekey of deviceId
+                        expect(res.body[authUn.split("|")[1]]).toBeDefined();
+                        //expect prekey to match
+                        var recievedPrekey = res.body[authUn.split("|")[1]];
+                        expect(recievedPrekey).toEqual(helper.base64EncodePrekey(prekeys[0]));
                         done();
                     });
                 });
@@ -265,7 +249,6 @@ describe("Routes:", function(done) {
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
-                    .parse(binaryParser)
                     .end(function(err, res) {
                         if (err) {
                             throw err;
@@ -286,26 +269,16 @@ describe("Routes:", function(done) {
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
-                    .parse(binaryParser)
                     .end(function(err, res) {
                         if (err) {
                             throw err;
                         }
                         expect(res.status).toEqual(205);
-                        //get protobuf builder
-                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto");
-                        var Protoprekeys = builder.build("protoprekeys");
-                        var Prekeys = Protoprekeys.Prekeys;
-                        var Prekey = Protoprekeys.Prekey;
-                        var KeyPair = Protoprekeys.KeyPair;
-                        //expect deviceId to match
-                        expect(Prekeys.decode(res.body).prekeys[0].deviceId).toEqual(authUn.split("|")[1]);
-                        //expect key id to match
-                        expect(Prekeys.decode(res.body).prekeys[0].id).toEqual(lastResortKey.id);
-                        var recievedPub = Prekeys.decode(res.body).prekeys[0].keyPair.public;
-                        var expectedPub = lastResortKey.keyPair.public;
-                        //expect public key to match
-                        expect(pbhelper.str2ab(recievedPub)).toEqual(pbhelper.str2ab(expectedPub));
+                        //expect prekey of deviceId
+                        expect(res.body[authUn.split("|")[1]]).toBeDefined();
+                        //expect prekey to match
+                        var recievedPrekey = res.body[authUn.split("|")[1]];
+                        expect(recievedPrekey).toEqual(helper.base64EncodePrekey(lastResortKey));
                         done();
                     });
                 });
@@ -317,16 +290,16 @@ describe("Routes:", function(done) {
                     request(app)
                     .post('/api/v1/key/update/')
                     .auth(authUn, authPassBadSig)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect(401, 'signature', done);
                 });
                 it('Future Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
                     request(app)
                     .post('/api/v1/key/update/')
                     .auth(authUn, authPassFuture)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
@@ -334,8 +307,8 @@ describe("Routes:", function(done) {
                     request(app)
                     .post('/api/v1/key/update/')
                     .auth(authUn, authPassPast)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
@@ -345,8 +318,8 @@ describe("Routes:", function(done) {
                     request(app)
                     .post('/api/v1/key/update/')
                     .auth(authUn, authPass)
-                    .set('Content-Type', 'application/octet-stream')
-                    .send(protoPrekeys.toBuffer())
+                    .set('Content-Type', 'application/json')
+                    .send(prekeysObj)
                     .expect(200, done);
                 });
                 it('should have 2 prekeys in DB', function(done){
@@ -361,27 +334,17 @@ describe("Routes:", function(done) {
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
                     .send({identityKey : authUn.split("|")[0]})
-                    .parse(binaryParser)
                     //.expect(200, done);
                     .end(function(err, res) {
                         if(err) {
                             throw err;
                         }
                         expect(res.status).toEqual(200);
-                        //get protobuf builder
-                        var builder = protoBuf.loadProtoFile("protobuf/keys.proto");
-                        var Protoprekeys = builder.build("protoprekeys");
-                        var Prekeys = Protoprekeys.Prekeys;
-                        var Prekey = Protoprekeys.Prekey;
-                        var KeyPair = Protoprekeys.KeyPair;
-                        //expect deviceId to match
-                        expect(Prekeys.decode(res.body).prekeys[0].deviceId).toEqual(protoPrekeys.prekeys[0].deviceId);
-                        //expect key id to match
-                        expect(Prekeys.decode(res.body).prekeys[0].id).toEqual(protoPrekeys.prekeys[0].id);
-                        var recievedPub = Prekeys.decode(res.body).prekeys[0].keyPair.public;
-                        var expectedPub = protoPrekeys.prekeys[0].keyPair.public;
-                        //expect public key to match
-                        expect(pbhelper.str2ab(recievedPub)).toEqual(pbhelper.str2ab(expectedPub));
+                        //expect prekey of deviceId
+                        expect(res.body[authUn.split("|")[1]]).toBeDefined();
+                        //expect prekey to match
+                        var recievedPrekey = res.body[authUn.split("|")[1]];
+                        expect(recievedPrekey).toEqual(helper.base64EncodePrekey(prekeys[0]));
                         done();
                     });
                 });
@@ -412,15 +375,6 @@ describe("Routes:", function(done) {
                 });
             });//end of 'Invalid Credentials'
             describe('Try Valid Credentials:', function() {
-                // var messagesJson = {messages: [
-                //                                 {headers:[
-                //                                             {recipient: authUn,
-                //                                              messageHeader: protoPrekeys.toBuffer()
-                //                                          },
-                //                                          ],
-                //                                  body: protoPrekeys.toBuffer()},
-                //                               ]
-                //                     };
                 var beforeCount;
                 var numMessages = 1;
                 it('get count of messages in queue', function(done) {
@@ -434,12 +388,9 @@ describe("Routes:", function(done) {
                     .post('/api/v1/message/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
-                    .send({messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()},], body: protoPrekeys.toBuffer()},]})
+                    .send({messages: [{headers:[{recipient: authUn, messageHeader: "base64 encoded string"},], body: "base64 encoded string"},]})
                     .expect(function(res) {
                         res.body.messagesQueued = numMessages;
-                        //res.body.keysNotFound.length = 0;
-                        //res.body.revokedKeys.length = 0;
-                        //res.body.missingDevices.length = 0;
                     })
                     .expect(200, done);
                 });
@@ -509,7 +460,7 @@ describe("Routes:", function(done) {
                     .post('/api/v1/message/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
-                    .send({messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()},], body: protoPrekeys.toBuffer()},]})
+                    .send({messages: [{headers:[{recipient: authUn, messageHeader: "base64 encoded string"},], body: "base64 encoded string"},]})
                     .expect(function(res) {
                         res.body.messagesQueued = 1;
                         //res.body.keysNotFound.length = 0;

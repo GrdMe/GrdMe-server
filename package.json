@@ -15,7 +15,6 @@
     "method-override": "latest",
     "mongoose": "latest",
     "morgan": "latest",
-    "protobufjs": "latest",
     "socket.io": "latest"
   },
   "scripts": {
