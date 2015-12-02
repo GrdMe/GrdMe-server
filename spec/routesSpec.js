@@ -8,13 +8,23 @@ var express = require('express');
 var protoBuf = require('protobufjs');
 var app = server.app;
 
+/* database setup */
 var database = require('../config/database');
 var mongoose = require('mongoose');
 mongoose.connect(database.url);
 var db = mongoose.connection;
+
 /* load db models */
 var Users = require('../app/models/user');
 var MessageQueue = require('../app/models/messageQueue');
+
+/* socket.io */
+var ioClient = require('socket.io-client');
+var options ={
+  transports: ['websocket'],
+  'force new connection': true
+};
+
 
 /* Load protobuf helper methods */
 var pbhelper = require('../protobuf/protobufHelperFunctions')
@@ -22,16 +32,19 @@ var pbhelper = require('../protobuf/protobufHelperFunctions')
 /* Constants */
 var NUMBER_PREKEYS_CREATED = 3;
 
+/* auth variables */
+var authUn;
+var authUnBadDid;
+var authPass;
+var authPassBadSig;
+var authPassFuture;
+var authPassPast;
+var prekeys; //array of array buffer prekeys
+var lastResortKey; //singular array buffer prekey
+var protoPrekeys; //sungular protobuf "prekeys" message
+
+
 describe("Routes:", function(done) {
-    var authUn;
-    var authUnBadDid;
-    var authPass;
-    var authPassBadSig;
-    var authPassFuture;
-    var authPassPast;
-    var prekeys; //array of array buffer prekeys
-    var lastResortKey; //singular array buffer prekey
-    var protoPrekeys; //sungular protobuf "prekeys" message
 
     it('Create Credentials & Keys for testing', function(done) {
         request(app)
@@ -55,6 +68,23 @@ describe("Routes:", function(done) {
     it('Create Prekeys protobuf', function(done) {
         protoPrekeys = pbhelper.constructKeysProtobuf(authUn.split("|")[1], lastResortKey, prekeys);
         done();
+    });
+
+    describe("Sockets:", function(){
+        describe("Auth not registered", function(){
+            it('should connect & return not registered', function(done){
+                var socket = ioClient.connect("http://localhost:8080", options);
+                socket.once('connect', function(data){
+                    socket.emit('authentication', { username:authUn, password:authPass });
+                    socket.once('not authorized', function(data) {
+                        console.log("ERROR MESSAGE: "+data.message);
+                        expect(data.message).toBe('not registered');
+                        socket.disconnect();
+                        done();
+                    });
+                });
+            });
+        });
     });
 
 
@@ -146,6 +176,22 @@ describe("Routes:", function(done) {
             });
         });//end of 'Valid Credentials'
     });//end of decribe 'Initial Authentication, not registered'
+
+    describe('Sockets Registered:', function(){
+        describe('Registered:', function(){
+            it('should connect & return authorized', function(done){
+                var socket = ioClient.connect("http://localhost:8080", options);
+                socket.once('connect', function(data){
+                    socket.emit('authentication', { username:authUn, password:authPass });
+                    socket.once('authorized', function(data) {
+                        socket.disconnect();
+                        done();
+                    });
+                });
+
+            });
+        });
+    });
 
     describe('Regular Authentication, Registered', function() {
         describe('GET /api/v1/key/', function() {
@@ -366,7 +412,15 @@ describe("Routes:", function(done) {
                 });
             });//end of 'Invalid Credentials'
             describe('Try Valid Credentials:', function() {
-                //var messagesJson = {messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()}], body: protoPrekeys.toBuffer()}]};
+                // var messagesJson = {messages: [
+                //                                 {headers:[
+                //                                             {recipient: authUn,
+                //                                              messageHeader: protoPrekeys.toBuffer()
+                //                                          },
+                //                                          ],
+                //                                  body: protoPrekeys.toBuffer()},
+                //                               ]
+                //                     };
                 var beforeCount;
                 var numMessages = 1;
                 it('get count of messages in queue', function(done) {
@@ -380,7 +434,7 @@ describe("Routes:", function(done) {
                     .post('/api/v1/message/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
-                    .send({messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()}], body: protoPrekeys.toBuffer()}]})
+                    .send({messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()},], body: protoPrekeys.toBuffer()},]})
                     .expect(function(res) {
                         res.body.messagesQueued = numMessages;
                         //res.body.keysNotFound.length = 0;
@@ -396,10 +450,76 @@ describe("Routes:", function(done) {
                         done();
                     });
                 });
+                it('entry in MessageQueue should be populated properly', function(done){
+                    MessageQueue.findOne({recipientIdKey : authUn.split("|")[0]}, function(err, doc){
+                                           expect(doc._id).toBeDefined();
+                                           expect(doc.messageHeader).toBeDefined();
+                                           expect(doc.messageBody).toBeDefined();
+                                           expect(doc.recipientIdKey).toBeDefined();
+                                           expect(doc.recipientDid).toBeDefined();
+                                           done();
+                                       });
+                });
 
             });//end of 'Valid Credentials'
         }); //end of 'POST /api/v1/message/'
 
+        describe('Sockets:', function(){
+            describe('Message on server:', function(){
+                it('should connect & return message', function(done){
+                    var socket = ioClient.connect("http://localhost:8080", options);
+                    socket.once('connect', function(data){
+                        socket.emit('authentication', { username:authUn, password:authPass });
+                        socket.once('message', function(messageData) {
+                            expect(messageData.header).toBeDefined();
+                            expect(messageData.body).toBeDefined();
+                            expect(messageData.id).toBeDefined();
+                            //confirm reception of message
+                            socket.emit('recieved', {messageId: messageData.id});
+                            socket.disconnect();
+                            done();
+                        });
+                    });
+
+                });
+                it('all messages for recipient should be removed from DB', function(done) {
+                    MessageQueue.count({recipientIdKey: authUn.split("|")[0],
+                                        recipientDid: authUn.split("|")[1]}, function(err, count){
+                        expect(count).toEqual(0);
+                        done();
+                    });
+                });
+                it('should recieve push message imediately after sending when sockets are connected', function(done){
+                    //connect to socket
+                    var socket = ioClient.connect("http://localhost:8080", options);
+                    socket.once('connect', function(data){
+                        socket.emit('authentication', { username:authUn, password:authPass });
+                        socket.on('message', function(messageData) {
+                            expect(messageData.header).toBeDefined();
+                            expect(messageData.body).toBeDefined();
+                            expect(messageData.id).toBeDefined();
+                            //confirm reception of message
+                            socket.emit('recieved', {messageId: messageData.id});
+                            socket.disconnect();
+                            done();
+                        });
+                    });
+                    //submit Message
+                    request(app)
+                    .post('/api/v1/message/')
+                    .auth(authUn, authPass)
+                    .set('Content-Type', 'application/json')
+                    .send({messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()},], body: protoPrekeys.toBuffer()},]})
+                    .expect(function(res) {
+                        res.body.messagesQueued = 1;
+                        //res.body.keysNotFound.length = 0;
+                        //res.body.revokedKeys.length = 0;
+                        //res.body.missingDevices.length = 0;
+                    })
+                    .expect(200);
+                });
+            });
+        });
         /*======= Delete device =======*/
         describe('DELETE /api/v1/key/', function(){
             describe('Try Invalid Credentials', function() {

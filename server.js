@@ -10,7 +10,7 @@
     var morgan   = require('morgan');                       // log requests to the console (express4)
     var bodyParser = require('body-parser');                // pull information from HTML POST (express4)
     var methodOverride = require('method-override');        // simulate DELETE and PUT (express4)
-    var rateLimit = require('express-rate-limit'); // docs: https://www.npmjs.com/package/express-rate-limit
+    var rateLimit = require('express-rate-limit');          // docs: https://www.npmjs.com/package/express-rate-limit
 
     // configuration ===========================================================
     var limiter = rateLimit({/* config */});
@@ -32,8 +32,7 @@
     app.use(bodyParser.raw());
     app.use(methodOverride());
 
-    // load the routes
-    require('./app/routes')(app);
+
 
     // database ================================================================
     var database = require('./config/database');
@@ -60,7 +59,7 @@
             var privateKey  = fs.readFileSync(httpsConfig.privateKeyPath);
             var certificate = fs.readFileSync(httpsConfig.certificatePath);
             var credentials = {key: privateKey, cert: certificate};
-            var server = https.createServer(credentials, app);
+            server = https.createServer(credentials, app);
             server.listen(443, function () {
                 console.log('Grd Me sever listening at port 443');
             });
@@ -79,3 +78,8 @@
     };
 
     exports.app = app;
+
+    // socket.io ===============================================================
+    var io = require('./push/socket').listen(server);
+    // load the routes
+    require('./app/routes')(app);

@@ -10,6 +10,10 @@ var protoBuf = require('protobufjs');
 var crypto = require("axolotl-crypto"); // docs: https://github.com/joebandenburg/libaxolotl-javascript/blob/master/doc/crypto.md
 var base64 = require('base64-arraybuffer');
 
+/* Socket.io */
+var socketio = require('socket.io');
+//var io = require('../push/socket').io;
+
 /* load db models */
 var Users = require('./models/user');
 var MessageQueue = require('./models/messageQueue');
@@ -358,7 +362,6 @@ module.exports = function(app) {
     });
 
     //submitting a message
-        //**consider implementing checks for revoked recipient, stale device recipient, and mismatched idkey/did recipients
     app.post('/api/v1/message/', auth, function(req, res) {
         /* get basic_auth fields from request */
         var user = basicAuth(req);
@@ -412,6 +415,19 @@ module.exports = function(app) {
                                 return res.sendStatus(500);
                             } else {
                                 responseBody.messagesQueued += 1;
+                                /* push message to recipient */
+                                var pushMessageBody = {
+                                    id: message._id,
+                                    header: message.messageHeader,
+                                    body: message.messageBody
+                                }
+                                var recipientUn = message.recipientIdKey+"|"+recipientDid;
+                                require('../push/socket').emitMessage(recipientUn, pushMessageBody);
+                                // if(socketId) {
+                                //     io.sockets.emit('message', pushMessageBody);
+                                // }
+
+                                /* return body if all messages dealt with */
                                 if (i >= req.body.messages.length) {
                                     success(null, identityKey, deviceId, function(status) {
                                         return res.status(status).send(messageBody);
