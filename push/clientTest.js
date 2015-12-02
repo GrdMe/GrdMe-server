@@ -23,7 +23,7 @@ socket.on('not authorized', function(data) {
             //deal with it
             break;
         case 'time':
-            var serverTime = data.serverTime;
+            var serverTime = data.serverTime; //int. unix time
             //deal with it
             break;
     }

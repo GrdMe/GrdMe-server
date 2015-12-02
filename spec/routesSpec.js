@@ -489,6 +489,35 @@ describe("Routes:", function(done) {
                         done();
                     });
                 });
+                it('should recieve push message imediately after sending when sockets are connected', function(done){
+                    //connect to socket
+                    var socket = ioClient.connect("http://localhost:8080", options);
+                    socket.once('connect', function(data){
+                        socket.emit('authentication', { username:authUn, password:authPass });
+                        socket.on('message', function(messageData) {
+                            expect(messageData.header).toBeDefined();
+                            expect(messageData.body).toBeDefined();
+                            expect(messageData.id).toBeDefined();
+                            //confirm reception of message
+                            socket.emit('recieved', {messageId: messageData.id});
+                            socket.disconnect();
+                            done();
+                        });
+                    });
+                    //submit Message
+                    request(app)
+                    .post('/api/v1/message/')
+                    .auth(authUn, authPass)
+                    .set('Content-Type', 'application/json')
+                    .send({messages: [{headers:[{recipient: authUn, messageHeader: protoPrekeys.toBuffer()},], body: protoPrekeys.toBuffer()},]})
+                    .expect(function(res) {
+                        res.body.messagesQueued = 1;
+                        //res.body.keysNotFound.length = 0;
+                        //res.body.revokedKeys.length = 0;
+                        //res.body.missingDevices.length = 0;
+                    })
+                    .expect(200);
+                });
             });
         });
         /*======= Delete device =======*/

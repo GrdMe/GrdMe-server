@@ -13,8 +13,19 @@ var AUTH_CHALLENGE_TIME_TO_LIVE = 60; //seconds. Forward or backward from server
 var clients = new Object();
 exports.clients = clients;
 
+var io;
+
+module.exports.emitMessage = function(userName, message) {
+    var socketId = clients[userName];
+    if(socketId) {
+        console.log("%%%%%");
+        io.to(socketId).emit('message', message);
+    }
+
+}
+
 module.exports.listen = function(server) {
-    var io = socketio.listen(server);
+    io = socketio.listen(server);
 
     io.sockets.on('connection', function(socket) {
         //console.log("====Socket Connected!====");

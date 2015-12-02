@@ -32,8 +32,7 @@
     app.use(bodyParser.raw());
     app.use(methodOverride());
 
-    // load the routes
-    require('./app/routes')(app);
+
 
     // database ================================================================
     var database = require('./config/database');
@@ -82,3 +81,5 @@
 
     // socket.io ===============================================================
     var io = require('./push/socket').listen(server);
+    // load the routes
+    require('./app/routes')(app);
