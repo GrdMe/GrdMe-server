@@ -2,7 +2,7 @@
 
 /* Constants */
 var NAME_DELIMITER = "|";
-var AUTH_CHALLENGE_TIME_TO_LIVE = 120; //seconds
+var AUTH_CHALLENGE_TIME_TO_LIVE = 60; //seconds. Forward or backward from server time
 
 /* load required modules */
 var basicAuth = require('basic-auth');
@@ -56,7 +56,7 @@ module.exports = function(app) {
                     var verified = crypto.verifySignature(pubkey,
                                                  dataToSign,
                                                  signature);
-                    if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > 0) { //if auth is fresh
+                    if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > (AUTH_CHALLENGE_TIME_TO_LIVE * 1000 * -1)) { //if auth is fresh
                         /* Verify signature on date */
                         var verified = crypto.verifySignature(pubkey, dataToSign, signature);
                         /* return apropriate response */
@@ -114,7 +114,7 @@ module.exports = function(app) {
                         var timeAuthDate = new Date(authDate);
                         var timeNow = new Date();
                         var difference = timeNow - timeAuthDate
-                        if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > 0) { //if auth is fresh
+                        if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > (AUTH_CHALLENGE_TIME_TO_LIVE * 1000 * -1)) { //if auth is fresh
                             /* Verify signature on date */
                             var verified = crypto.verifySignature(base64.decode(identityKey), base64.decode(String(authDate)), authSig);
                             /* return apropriate response */
@@ -510,9 +510,9 @@ module.exports = function(app) {
 
                         // Generate valid auth password
                         var now = new Date();
-                        var basicAuthPassword = String(now.getTime());
+                        var basicAuthPassword = String(now.getTime() + (AUTH_CHALLENGE_TIME_TO_LIVE*1000) - 1);
+                        var signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(basicAuthPassword)));
                         basicAuthPassword = basicAuthPassword.concat(NAME_DELIMITER);
-                        var signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(String(now.getTime()))));
                         basicAuthPassword = basicAuthPassword.concat(signature);
 
                         // Generate <timestamp>|<sign(timestamp)> from future
