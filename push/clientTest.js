@@ -8,6 +8,31 @@ socket.on('connect', function (data) {
     socket.emit('authentication', { username:"identityKey|deviceId", password:"time|sig(time)" });
 });
 
+socket.on('not authorized', function(data) {
+    switch(data.message){
+        case 'badly formed credentials':
+            //deal with it
+            break;
+        case 'revoked':
+            //deal with it
+            break;
+        case 'signature':
+            //deal with it
+            break;
+        case 'not registered':
+            //deal with it
+            break;
+        case 'time':
+            var serverTime = data.serverTime;
+            //deal with it
+            break;
+    }
+});
+
+socket.on('authorized', function(data) {
+    //lets you know that socket.emit('authentication'... was successful
+});
+
 socket.on('message', function(messageData) {
     // 3: vvv do something with messageData here vvv
     console.log(messageData);

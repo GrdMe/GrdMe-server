@@ -2,7 +2,7 @@
 
 /* Constants */
 var NAME_DELIMITER = "|";
-var AUTH_CHALLENGE_TIME_TO_LIVE = 120; //seconds
+var AUTH_CHALLENGE_TIME_TO_LIVE = 60; //seconds. Forward or backward from server time
 
 /* load required modules */
 var basicAuth = require('basic-auth');
@@ -56,7 +56,7 @@ module.exports = function(app) {
                     var verified = crypto.verifySignature(pubkey,
                                                  dataToSign,
                                                  signature);
-                    if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > 0) { //if auth is fresh
+                    if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > (AUTH_CHALLENGE_TIME_TO_LIVE * 1000 * -1)) { //if auth is fresh
                         /* Verify signature on date */
                         var verified = crypto.verifySignature(pubkey, dataToSign, signature);
                         /* return apropriate response */
@@ -114,7 +114,7 @@ module.exports = function(app) {
                         var timeAuthDate = new Date(authDate);
                         var timeNow = new Date();
                         var difference = timeNow - timeAuthDate
-                        if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > 0) { //if auth is fresh
+                        if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > (AUTH_CHALLENGE_TIME_TO_LIVE * 1000 * -1)) { //if auth is fresh
                             /* Verify signature on date */
                             var verified = crypto.verifySignature(base64.decode(identityKey), base64.decode(String(authDate)), authSig);
                             /* return apropriate response */
@@ -414,6 +414,10 @@ module.exports = function(app) {
                                 return res.sendStatus(500);
                             } else {
                                 responseBody.messagesQueued += 1;
+                                /* push message to recipient */
+
+
+                                /* return body if all messages dealt with */
                                 if (i >= req.body.messages.length) {
                                     success(null, identityKey, deviceId, function(status) {
                                         return res.status(status).send(messageBody);

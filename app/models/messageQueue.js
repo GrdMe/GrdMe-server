@@ -5,7 +5,7 @@ var mongoose = require('mongoose');
 var messageQueueSchema = mongoose.Schema({
     recipientIdKey : String,
     recipientDid : String,
-    messsageHeader : Object,
+    messageHeader : Object,
     messageBody : Object,
 });
 
