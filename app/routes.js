@@ -6,7 +6,6 @@ var AUTH_CHALLENGE_TIME_TO_LIVE = 60; //seconds. Forward or backward from server
 
 /* load required modules */
 var basicAuth = require('basic-auth');
-var protoBuf = require('protobufjs');
 var crypto = require("axolotl-crypto"); // docs: https://github.com/joebandenburg/libaxolotl-javascript/blob/master/doc/crypto.md
 var base64 = require('base64-arraybuffer');
 
@@ -17,9 +16,6 @@ var socketio = require('socket.io');
 /* load db models */
 var Users = require('./models/user');
 var MessageQueue = require('./models/messageQueue');
-
-/* Load protobuf helper methods */
-var pbhelper = require('../protobuf/protobufHelperFunctions')
 
 //expose the routs to app with module.exports
 module.exports = function(app) {
@@ -163,43 +159,20 @@ module.exports = function(app) {
 
         /* Get protobuf payload */
         var payload = req.body;
-
-        var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
-        var Protoprekeys = builder.build("protoprekeys");
-        var Prekeys = Protoprekeys.Prekeys;
-        var Prekey = Protoprekeys.Prekey;
-        var KeyPair = Protoprekeys.KeyPair;
-        var recievedPrekeys = Prekeys.decode(payload);
-
-        ////console.log("payload: %j", payload);
-        ////console.log("recievedPrekeys - decode: %j", recievedPrekeys);
+        //check composition of payload & return 415
 
         /* Create DB Entry. New user and/or new device w/ prekeys */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
-                var prekeysArray = [];
-                for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
-                    prekeysArray.push({
-                        keyId : Number(recievedPrekeys.prekeys[i].id),
-                        key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
-                    });
-                }
                 if (!err && !dbUser) { //if identityKey DNE in DB
-                    //create new document in db
-                    //console.log("RECIEVEDPREKEYS (DECODED): %j", recievedPrekeys.prekeys[0]);
-                    /////console.log("RECIEVEDPREKEYS (ENCODED): %j", recievedPrekeys.prekeys[1].toBuffer());
-                    /////console.log("RECIEVEDPREKEYS (ENCODED)type of: ", typeof(recievedPrekeys.prekeys[1].toBuffer()));
-                    ////console.log("RECIEVED PREKEYS: "+ typeof(recievedPrekeys.prekeys[1]));
                     /* create devices object */
                     var devicesObject = {numberOfDevices : 1};
                     devicesObject[deviceId] = {
                                                  deviceId : deviceId,
-                                                 lastResortKey :  {
-                                                                   keyId : Number(recievedPrekeys.lastResortKey.id),
-                                                                   key : JSON.stringify(recievedPrekeys.lastResortKey)
-                                                                  },
-                                                 prekeys : prekeysArray //an array of stringified Prekey protobuf messages
-                                                }
+                                                 lastResortKey :  payload.lastResortKey,
+                                                 prekeys : payload.prekeys //an array of prekeys with the keys base64 encoded
+                                              }
+                    /* create new entry in DB */
                     Users.create({
                         identityKey : identityKey,
                         revoked : false,
@@ -244,31 +217,19 @@ module.exports = function(app) {
 
         /* Get protobuf payload */
         var payload = req.body;
-        var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
-        var Protoprekeys = builder.build("protoprekeys");
-        var Prekeys = Protoprekeys.Prekeys;
-        var Prekey = Protoprekeys.Prekey;
-        var KeyPair = Protoprekeys.KeyPair;
-        var recievedPrekeys = Prekeys.decode(payload);
+        //check composition of payload & return 415
 
         /* Query DB for user to be updated */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {
-                var prekeysArray = [];
                 if(!err && dbUser) { //if identityKey exists
                     /* add prekeys to device */
-                    for (var i=0; i<recievedPrekeys.prekeys.length; i++) {
-                        dbUser.devices[deviceId].prekeys.push({
-                            keyId : Number(recievedPrekeys.prekeys[i].id),
-                            key : JSON.stringify(recievedPrekeys.prekeys[i])//.toBuffer()
-                        });
+                    for (var i=0; i<payload.prekeys.length; i++) {
+                        dbUser.devices[deviceId].prekeys.push(payload.prekeys[i]);
                     }
                     /* update device's lastResortKey */
-                    if (recievedPrekeys.lastResortKey) {
-                        dbUser.devices[deviceId].lastResortKey = {
-                            keyId : Number(recievedPrekeys.lastResortKey.id),
-                            key : JSON.stringify(recievedPrekeys.lastResortKey)
-                        };
+                    if (payload.lastResortKey) {
+                        dbUser.devices[deviceId].lastResortKey = payload.lastResortKey;
                     }
 
                     //save new keys to dbUser's device
@@ -310,25 +271,16 @@ module.exports = function(app) {
                     if (dbUser.revoked == true){ //if identityKey has been revoked
                         return send.Status(410);
                     }
-                    var builder = protoBuf.loadProtoFile("protobuf/keys.proto"); //appears to automaticly search from root of project
-                    var Protoprekeys = builder.build("protoprekeys");
-                    var Prekeys = Protoprekeys.Prekeys;
-                    var Prekey = Protoprekeys.Prekey;
-                    var KeyPair = Protoprekeys.KeyPair;
 
-                    var prekeysArray = [];
+                    var responseBody = new Object();
                     for (var key in dbUser.devices) {
                         if(key != 'numberOfDevices') {
                             if (dbUser.devices[key].prekeys.length > 0) { // if there is a prekey left, fetch it
                                 //console.log("NUMBER OF PREKEYS BEFORE SHIFT: "+dbUser.devices[key].prekeys.length);
                                 var prekey = dbUser.devices[key].prekeys.shift();
-                                /////console.log("PREKEY FROM MONGOOSE: %j", prekey);
-                                //console.log("PREKEY.key FROM MONGOOSE: %j", JSON.parse(prekey.key));
-                                //console.log("NUMBER OF PREKEYS AFTER SHIFT: "+dbUser.devices[key].prekeys.length);
-                                prekeysArray.push(new Prekey(String(dbUser.devices[key].deviceId), prekey.keyId, new KeyPair(pbhelper.ab2str(JSON.parse(prekey.key).keyPair.public), pbhelper.ab2str(JSON.parse(prekey.key).keyPair.private))));
-                                //prekeysArray.push(JSON.parse(prekey.key)); //is in form of Prekey protobuf object in buffer form
+                                responseBody[key] = prekey;
                             } else { //if no prekey left, fetch last resort key
-                                prekeysArray.push(new Prekey(String(dbUser.devices[key].deviceId), dbUser.devices[key].lastResortKey.keyId, new KeyPair(pbhelper.ab2str(JSON.parse(dbUser.devices[key].lastResortKey.key).keyPair.public), pbhelper.ab2str(JSON.parse(dbUser.devices[key].lastResortKey.key).keyPair.private))));
+                                responseBody[key] = dbUser.devices[key].lastResortKey;
                             }
                         }
                     }
@@ -337,17 +289,9 @@ module.exports = function(app) {
                         if (err) {
                             return res.sendStatus(500);
                         } else {
-                            /////console.log("PREKEYS AFTER DECODE: %j", prekeysArray);
-                            //var protoPrekeys = new Prekeys(null, prekeysArray);
-                            //protoPrekeys['prekeys'][0] = prekeysArray[0];
-                            //console.log("NEW CONSTRUCTION RESULT: %j", protoPrekeys);
-                            //var protoPrekeys = pbhelper.constructKeysProtobuf('test', null, prekeysArray);
-                            var protoPrekeys = new Prekeys(null, prekeysArray);
-                            console.log("PROTOPREKEYS: %j", protoPrekeys.prekeys[0]);
-
-                            res.set('Content-Type', 'application/octet-stream');
+                            res.set('Content-Type', 'application/json');
                             success(null, authIdentityKey, authDeviceId, function(status) {
-                                return res.status(status).send(protoPrekeys.toBuffer()).end();
+                                return res.status(status).send(responseBody).end();
                             });
                         }
                     });
