@@ -102,7 +102,6 @@ var authorize = function(username, password, callback) {
     /* varify credentials */
     Users.findOne({identityKey : identityKey},
         function(err, dbUser) {
-            if(dbUser) {console.log('DBUSER FOUND!?!?');}
             if (dbUser && userContainsDeviceId(dbUser, deviceId) && !err) {
                 if (dbUser.revoked == true) { //if idkey has been revoked
                     console.log("Socket Auth Failed: - Revoked");
