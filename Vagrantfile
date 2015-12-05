@@ -81,8 +81,6 @@ Vagrant.configure(2) do |config|
     sudo apt-get update
     sudo apt-get install -y mongodb-org
 
-    sudo npm install -g mocha
-
     echo node.js version:
     node -v
     echo npm version:

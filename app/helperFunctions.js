@@ -41,3 +41,14 @@ var str2ab = function(str) {
   return buf;
 };
 module.exports.str2ab = str2ab;
+
+/* Helper function to determin if deviceId exists under IdentityKey */
+var userContainsDeviceId = function(user, did) {
+    if (user) {
+        if (user.devices[did]) {
+            return true;
+        }
+    }
+    return false;
+};
+module.exports.userContainsDeviceId = userContainsDeviceId;

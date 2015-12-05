@@ -4,26 +4,26 @@
 'use strict'
 
 // set up ======================================================================
-    var express  = require('express');
-    var app      = express();                               // create our app w/ express
-    var mongoose = require('mongoose');                     // mongoose for mongodb
-    var morgan   = require('morgan');                       // log requests to the console (express4)
-    var bodyParser = require('body-parser');                // pull information from HTML POST (express4)
+    var express        = require('express');
+    var app            = express();                         // create our app w/ express
+    var mongoose       = require('mongoose');               // mongoose for mongodb
+    var morgan         = require('morgan');                 // log requests to the console (express4)
+    var bodyParser     = require('body-parser');            // pull information from HTML POST (express4)
     var methodOverride = require('method-override');        // simulate DELETE and PUT (express4)
-    var rateLimit = require('express-rate-limit');          // docs: https://www.npmjs.com/package/express-rate-limit
+    var rateLimit      = require('express-rate-limit');     // docs: https://www.npmjs.com/package/express-rate-limit
 
     // configuration ===========================================================
     var limiter = rateLimit({/* config */});
     //app.use(limiter);
     switch(process.env.NODE_ENV){
         case 'development':
-            app.use(morgan('dev'));                                         // log every request to the console
+            app.use(morgan('dev'));      // log every request to the console
             break;
         case 'production':
-            app.use(morgan('common'));                                         // log every request to the console
+            app.use(morgan('common'));   // log every request to the console
             break;
         default:
-            app.use(morgan('dev'));                                         // log every request to the console
+            app.use(morgan('dev'));      // log every request to the console
             break;
     }
     app.use(bodyParser.urlencoded({'extended':'true'}));            // parse application/x-www-form-urlencoded
@@ -53,13 +53,13 @@
             });
             break;
         case 'production':
-            var fs       = require('fs');
-            var https    = require('https');
+            var fs          = require('fs');
+            var https       = require('https');
             var httpsConfig = require('./config/productionPaths');
             var privateKey  = fs.readFileSync(httpsConfig.privateKeyPath);
             var certificate = fs.readFileSync(httpsConfig.certificatePath);
             var credentials = {key: privateKey, cert: certificate};
-            server = https.createServer(credentials, app);
+            server          = https.createServer(credentials, app);
             server.listen(443, function () {
                 console.log('Grd Me sever listening at port 443');
             });

@@ -1,6 +1,5 @@
 "use strict"
 
-//process.env.NODE_ENV = 'test';
 
 var request = require('supertest');
 var server = require('../server');
@@ -24,9 +23,10 @@ var options ={
   'force new connection': true
 };
 
-
 /* Load helper methods */
 var helper = require('../app/helperFunctions');
+var axolotlTest = require('./axolotlTestGenerator');
+var constants = require('../app/constants');
 
 /* Constants */
 var NUMBER_PREKEYS_CREATED = 3;
@@ -45,23 +45,18 @@ var prekeysObj;
 
 
 describe("RouteSpec:", function(done) {
-
     it('Create Credentials & Keys for testing', function(done) {
-        request(app)
-        .get('/test/axolotl/'+String(NUMBER_PREKEYS_CREATED))
-        .end(function(err, res) {
-            if (err) {
-                throw err;
-            }
-            authUn = res.body.basicAuthUserName;
-            authPass = res.body.basicAuthPassword;
-            authUnBadDid = res.body.badDidUserName;
-            authPassBadSig = res.body.badSignaturePassword;
-            authPassFuture = res.body.futurePassword;
-            authPassPast = res.body.pastPassword;
-            lastResortKey = res.body.lastResortKey;
-            prekeys = res.body.preKeys;
-            prekeysObj = helper.prekeysObjectConstructor(lastResortKey, prekeys);
+        axolotlTest.generate(NUMBER_PREKEYS_CREATED, function(data){
+            /* store auth credentials for tests */
+            authUn         = data.basicAuthUserName;
+            authPass       = data.basicAuthPassword;
+            authUnBadDid   = data.badDidUserName;
+            authPassBadSig = data.badSignaturePassword;
+            authPassFuture = data.futurePassword;
+            authPassPast   = data.pastPassword;
+            lastResortKey  = data.lastResortKey;
+            prekeys        = data.preKeys;
+            prekeysObj     = helper.prekeysObjectConstructor(lastResortKey, prekeys);
             done();
         });
     });
@@ -89,6 +84,14 @@ describe("RouteSpec:", function(done) {
                 it('should respond with 401, not registered', function(done){
                     request(app)
                     .post('/api/v1/message/')
+                    .auth(authUn, authPass)
+                    .expect(401, 'not registered', done);
+                });
+            });
+            describe('DELETE /api/v1/key/', function() {
+                it('should respond with 401, not registered', function(done){
+                    request(app)
+                    .delete('/api/v1/key/')
                     .auth(authUn, authPass)
                     .expect(401, 'not registered', done);
                 });
@@ -136,18 +139,18 @@ describe("RouteSpec:", function(done) {
                     .expect(200, done);
                 });
                 it('new user should be in database', function(done){
-                    Users.findOne({identityKey : authUn.split("|")[0]}, function(err, dbUser) {
+                    Users.findOne({identityKey : authUn.split(constants.NAME_DELIMITER)[0]}, function(err, dbUser) {
                         expect(dbUser).toBeDefined();
                         done();
                     });
                 });
                 it('new user should be pupulated appropriately', function(done){
-                    Users.findOne({identityKey : authUn.split("|")[0]}, function(err, dbUser) {
+                    Users.findOne({identityKey : authUn.split(constants.NAME_DELIMITER)[0]}, function(err, dbUser) {
                         expect(dbUser.revoked).toBe(false);
                         expect(dbUser.devices.numberOfDevices).toEqual(1);
-                        expect(dbUser.devices[authUn.split("|")[1]]).toBeDefined();
-                        expect(dbUser.devices[authUn.split("|")[1]].lastResortKey).toBeDefined();
-                        expect(dbUser.devices[authUn.split("|")[1]].prekeys.length).toEqual(NUMBER_PREKEYS_CREATED-1);
+                        expect(dbUser.devices[authUn.split(constants.NAME_DELIMITER)[1]]).toBeDefined();
+                        expect(dbUser.devices[authUn.split(constants.NAME_DELIMITER)[1]].lastResortKey).toBeDefined();
+                        expect(dbUser.devices[authUn.split(constants.NAME_DELIMITER)[1]].prekeys.length).toEqual(NUMBER_PREKEYS_CREATED-1);
                         done();
                     });
                 });
@@ -157,25 +160,51 @@ describe("RouteSpec:", function(done) {
 
     describe('Regular Authentication, Registered', function() {
         describe('GET /api/v1/key/', function() {
-
+            describe('Try Invalid Credentials', function() {
+                it('Bad Signature: should respond with 401, signature', function(done){
+                    request(app)
+                    .get('/api/v1/key/')
+                    .auth(authUn, authPassBadSig)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'signature', done);
+                });
+                it('Future Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
+                    request(app)
+                    .get('/api/v1/key/')
+                    .auth(authUn, authPassFuture)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect('Server-Time', /[0-9]*/)
+                    .expect(401, 'time', done);
+                });
+                it('Past Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
+                    request(app)
+                    .get('/api/v1/key/')
+                    .auth(authUn, authPassPast)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect('Server-Time', /[0-9]*/)
+                    .expect(401, 'time', done);
+                });
+            });
             describe('Try Valid Credentials', function() {
                 it('should respond with 200 & list of matching prekeys', function(done){
                     request(app)
                     .get('/api/v1/key/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split("|")[0]})
-                    //.expect(200, done);
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .end(function(err, res) {
                         if(err) {
                             throw err;
                         }
                         expect(res.status).toEqual(200);
                         //expect prekey of deviceId
-                        expect(res.body[authUn.split("|")[1]]).toBeDefined();
+                        expect(res.body[authUn.split(constants.NAME_DELIMITER)[1]]).toBeDefined();
                         //expect prekey to match
-                        var recievedPrekey = res.body[authUn.split("|")[1]];
-                        expect(recievedPrekey).toEqual(helper.base64EncodePrekey(prekeys[0]));
+                        var recievedPrekey = res.body[authUn.split(constants.NAME_DELIMITER)[1]];
+                        expect(recievedPrekey).toEqual(prekeysObj.prekeys[0]);
                         done();
                     });
                 });
@@ -186,7 +215,7 @@ describe("RouteSpec:", function(done) {
                     .get('/api/v1/key/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split("|")[0]})
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .end(function(err, res) {
                         if (err) {
                             throw err;
@@ -196,8 +225,8 @@ describe("RouteSpec:", function(done) {
                     });
                 });
                 it('device should have no prekeys', function(done){
-                    Users.findOne({identityKey : authUn.split("|")[0]}, function(err, dbUser) {
-                        expect(dbUser.devices[authUn.split("|")[1]].prekeys.length).toEqual(0);
+                    Users.findOne({identityKey : authUn.split(constants.NAME_DELIMITER)[0]}, function(err, dbUser) {
+                        expect(dbUser.devices[authUn.split(constants.NAME_DELIMITER)[1]].prekeys.length).toEqual(0);
                         done();
                     });
                 });
@@ -206,17 +235,17 @@ describe("RouteSpec:", function(done) {
                     .get('/api/v1/key/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split("|")[0]})
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .end(function(err, res) {
                         if (err) {
                             throw err;
                         }
                         expect(res.status).toEqual(205);
                         //expect prekey of deviceId
-                        expect(res.body[authUn.split("|")[1]]).toBeDefined();
+                        expect(res.body[authUn.split(constants.NAME_DELIMITER)[1]]).toBeDefined();
                         //expect prekey to match
-                        var recievedPrekey = res.body[authUn.split("|")[1]];
-                        expect(recievedPrekey).toEqual(helper.base64EncodePrekey(lastResortKey));
+                        var recievedPrekey = res.body[authUn.split(constants.NAME_DELIMITER)[1]];
+                        expect(recievedPrekey).toEqual(prekeysObj.lastResortKey);
                         done();
                     });
                 });
@@ -261,8 +290,8 @@ describe("RouteSpec:", function(done) {
                     .expect(200, done);
                 });
                 it('should have 2 prekeys in DB', function(done){
-                    Users.findOne({identityKey : authUn.split("|")[0]}, function(err, dbUser) {
-                        expect(dbUser.devices[authUn.split("|")[1]].prekeys.length).toEqual(NUMBER_PREKEYS_CREATED-1);
+                    Users.findOne({identityKey : authUn.split(constants.NAME_DELIMITER)[0]}, function(err, dbUser) {
+                        expect(dbUser.devices[authUn.split(constants.NAME_DELIMITER)[1]].prekeys.length).toEqual(NUMBER_PREKEYS_CREATED-1);
                         done();
                     });
                 });
@@ -271,7 +300,7 @@ describe("RouteSpec:", function(done) {
                     .get('/api/v1/key/')
                     .auth(authUn, authPass)
                     .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split("|")[0]})
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     //.expect(200, done);
                     .end(function(err, res) {
                         if(err) {
@@ -279,10 +308,10 @@ describe("RouteSpec:", function(done) {
                         }
                         expect(res.status).toEqual(200);
                         //expect prekey of deviceId
-                        expect(res.body[authUn.split("|")[1]]).toBeDefined();
+                        expect(res.body[authUn.split(constants.NAME_DELIMITER)[1]]).toBeDefined();
                         //expect prekey to match
-                        var recievedPrekey = res.body[authUn.split("|")[1]];
-                        expect(recievedPrekey).toEqual(helper.base64EncodePrekey(prekeys[0]));
+                        var recievedPrekey = res.body[authUn.split(constants.NAME_DELIMITER)[1]];
+                        expect(recievedPrekey).toEqual(prekeysObj.prekeys[0]);
                         done();
                     });
                 });
@@ -340,7 +369,7 @@ describe("RouteSpec:", function(done) {
                     });
                 });
                 it('entry in MessageQueue should be populated properly', function(done){
-                    MessageQueue.findOne({recipientIdKey : authUn.split("|")[0]}, function(err, doc){
+                    MessageQueue.findOne({recipientIdKey : authUn.split(constants.NAME_DELIMITER)[0]}, function(err, doc){
                                            expect(doc._id).toBeDefined();
                                            expect(doc.messageHeader).toBeDefined();
                                            expect(doc.messageBody).toBeDefined();
@@ -385,13 +414,13 @@ describe("RouteSpec:", function(done) {
                     .expect(200, done);
                 });
                 it('device should be deleted from database', function(done){
-                    Users.findOne({identityKey : authUn.split("|")[0]}, function(err, dbUser) {
-                        expect(dbUser.devices[authUn.split("|")[1]]).not.toBeDefined();
+                    Users.findOne({identityKey : authUn.split(constants.NAME_DELIMITER)[0]}, function(err, dbUser) {
+                        expect(dbUser.devices[authUn.split(constants.NAME_DELIMITER)[1]]).not.toBeDefined();
                         done();
                     });
                 });
                 it('identityKey should be revoked in database', function(done){
-                    Users.findOne({identityKey : authUn.split("|")[0]}, function(err, dbUser) {
+                    Users.findOne({identityKey : authUn.split(constants.NAME_DELIMITER)[0]}, function(err, dbUser) {
                         expect(dbUser.revoked).toBe(true);
                         done();
                     });
@@ -406,7 +435,7 @@ describe("RouteSpec:", function(done) {
                 request(app)
                 .get('/api/v1/key/')
                 .auth(authUn, authPass)
-                .send({identityKey : authUn.split("|")[0]})
+                .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                 .expect(401, 'not registered', done);
             });
         });//end of 'Valid Credentials'
@@ -417,15 +446,3 @@ describe("RouteSpec:", function(done) {
     //     done();
     // });
 });
-
-/* Helper Functions */
-function binaryParser(res, callback) {
-    res.setEncoding('binary');
-    res.data = '';
-    res.on('data', function (chunk) {
-        res.data += chunk;
-    });
-    res.on('end', function () {
-        callback(null, new Buffer(res.data, 'binary'));
-    });
-}

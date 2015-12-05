@@ -24,6 +24,8 @@ var options ={
 
 /* Load helper methods */
 var helper = require('../app/helperFunctions');
+var axolotlTest = require('./axolotlTestGenerator');
+var constants = require('../app/constants');
 
 /* Constants */
 var NUMBER_PREKEYS_CREATED = 3;
@@ -43,21 +45,16 @@ var prekeysObj;
 
 describe("socketSpec.js", function(){
     it('Create Credentials & Keys for testing', function(done) {
-        request(app)
-        .get('/test/axolotl/'+String(NUMBER_PREKEYS_CREATED))
-        .end(function(err, res) {
-            if (err) {
-                throw err;
-            }
-            authUn = res.body.basicAuthUserName;
-            authPass = res.body.basicAuthPassword;
-            authUnBadDid = res.body.badDidUserName;
-            authPassBadSig = res.body.badSignaturePassword;
-            authPassFuture = res.body.futurePassword;
-            authPassPast = res.body.pastPassword;
-            lastResortKey = res.body.lastResortKey;
-            prekeys = res.body.preKeys;
-            prekeysObj = helper.prekeysObjectConstructor(lastResortKey, prekeys);
+        axolotlTest.generate(NUMBER_PREKEYS_CREATED, function(data){
+            authUn         = data.basicAuthUserName;
+            authPass       = data.basicAuthPassword;
+            authUnBadDid   = data.badDidUserName;
+            authPassBadSig = data.badSignaturePassword;
+            authPassFuture = data.futurePassword;
+            authPassPast   = data.pastPassword;
+            lastResortKey  = data.lastResortKey;
+            prekeys        = data.preKeys;
+            prekeysObj     = helper.prekeysObjectConstructor(lastResortKey, prekeys);
             done();
         });
     });
@@ -182,8 +179,8 @@ describe("socketSpec.js", function(){
 
                 });
                 it('all messages for recipient should be removed from DB', function(done) {
-                    MessageQueue.count({recipientIdKey: authUn.split("|")[0],
-                                        recipientDid: authUn.split("|")[1]}, function(err, count){
+                    MessageQueue.count({recipientIdKey: authUn.split(constants.NAME_DELIMITER)[0],
+                                        recipientDid: authUn.split(constants.NAME_DELIMITER)[1]}, function(err, count){
                         expect(count).toEqual(0);
                         done();
                     });
@@ -221,8 +218,8 @@ describe("socketSpec.js", function(){
                     });
                 });
                 it('all messages for recipient should be removed from DB', function(done) {
-                    MessageQueue.count({recipientIdKey: authUn.split("|")[0],
-                                        recipientDid: authUn.split("|")[1]}, function(err, count){
+                    MessageQueue.count({recipientIdKey: authUn.split(constants.NAME_DELIMITER)[0],
+                                        recipientDid: authUn.split(constants.NAME_DELIMITER)[1]}, function(err, count){
                         expect(count).toEqual(0);
                         done();
                     });

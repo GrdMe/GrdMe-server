@@ -5,7 +5,6 @@
   "main": "server.js",
   "author": "grdme team",
   "dependencies": {
-    "axolotl": "latest",
     "axolotl-crypto": "latest",
     "base64-arraybuffer": "latest",
     "basic-auth": "latest",
@@ -25,7 +24,8 @@
     "should": "latest",
     "supertest": "latest",
     "jasmine-node": "latest",
-    "socket.io-client": "latest"
+    "socket.io-client": "latest",
+    "axolotl": "latest"
   },
   "repository": {
     "type": "git",

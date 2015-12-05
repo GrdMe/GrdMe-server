@@ -43,7 +43,7 @@ npm install
 npm test
 ```
 ### 4. Stopping Vagrant
-To stop gracefully, rin the following from the project directory:
+To stop gracefully, run the following from the project directory:
 ```bash
 vagrant halt
 ```

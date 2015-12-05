@@ -1,11 +1,11 @@
-var socketio = require('socket.io');
-var base64 = require('base64-arraybuffer');
-var crypto = require("axolotl-crypto");
+var socketio     = require('socket.io');
+var base64       = require('base64-arraybuffer');
+var crypto       = require("axolotl-crypto");
 var MessageQueue = require('../app/models/messageQueue');
-var Users = require('../app/models/user');
+var Users        = require('../app/models/user');
 
-var NAME_DELIMITER = '|';
-var AUTH_CHALLENGE_TIME_TO_LIVE = 60; //seconds. Forward or backward from server time
+/* constants */
+var constants = require('../app/constants');
 
 //keep track of connected clients
 //object keyed by identityKey|deviceId
@@ -27,6 +27,7 @@ module.exports.listen = function(server) {
     io = socketio.listen(server);
 
     io.sockets.on('connection', function(socket) {
+        console.log("Connected to socket with id: %s", socket.id);
 
         socket.on('authentication', function(data) {
             authorize(data.username, data.password, function(errObject)  { //if socket authorized
@@ -36,19 +37,16 @@ module.exports.listen = function(server) {
                     socket.emit('authorized', null);
                     //create mapping in clients object
                     clients[data.username] = socket.id;
-                    console.log("custom Id mapped");
                     //get queued messages from DB
-                    var names = data.username.split(NAME_DELIMITER);
+                    var names = data.username.split(constants.NAME_DELIMITER);
                     var identityKey = names[0];
                     var deviceId = names[1];
 
                     MessageQueue.find({recipientIdKey : identityKey,
                                        recipientDid : deviceId}, function(err, docs){
                         if (err) console.log(err);
-                        console.log("MESSAGES FOUND");
                         for (var i=0; i<docs.length; i++) {
                             //construct message
-                            console.log("MESSAGES ITER");
                             var message = {
                                 id : docs[i]._id,
                                 header : docs[i].messageHeader,
@@ -81,12 +79,12 @@ module.exports.listen = function(server) {
 
 var authorize = function(username, password, callback) {
     /* parse credentials */
-    var names = username.split(NAME_DELIMITER);
+    var names       = username.split(constants.NAME_DELIMITER);
     var identityKey = names[0];
-    var deviceId = names[1];
-    var pass = password.split(NAME_DELIMITER);
-    var authDate = Number(pass[0]);
-    var authSig = pass[1];
+    var deviceId    = names[1];
+    var pass        = password.split(constants.NAME_DELIMITER);
+    var authDate    = Number(pass[0]);
+    var authSig     = pass[1];
 
     /* verify presence of credentials */
     if(!username || !password || !names || names.length != 2 || !identityKey || !deviceId || !pass || pass.length != 2 || !authDate || !authSig) {
@@ -112,7 +110,7 @@ var authorize = function(username, password, callback) {
                 var verified = crypto.verifySignature(pubkey,
                                                       dataToSign,
                                                       signature);
-                if (difference < (AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > (AUTH_CHALLENGE_TIME_TO_LIVE * 1000 * -1)) { //if auth is fresh
+                if (difference < (constants.AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > (constants.AUTH_CHALLENGE_TIME_TO_LIVE * 1000 * -1)) { //if auth is fresh
                     /* Verify signature on date */
                     var verified = crypto.verifySignature(pubkey, dataToSign, signature);
                     /* return apropriate response */
