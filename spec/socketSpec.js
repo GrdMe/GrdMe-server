@@ -210,11 +210,11 @@ describe("socketSpec.js", function(){
                             });
                         });
                         socket.once('message', function(messageData) {
+                            //confirm reception of message
+                            socket.emit('recieved', {messageId: messageData.id});
                             expect(messageData.header).toBeDefined();
                             expect(messageData.body).toBeDefined();
                             expect(messageData.id).toBeDefined();
-                            //confirm reception of message
-                            socket.emit('recieved', {messageId: messageData.id});
                             socket.disconnect();
                             done();
                         });
