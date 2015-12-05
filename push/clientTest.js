@@ -34,13 +34,12 @@ socket.on('authorized', function(data) {
 });
 
 socket.on('message', function(messageData) {
-    // 3: vvv do something with messageData here vvv
-    console.log(messageData);
-    var messageHeader = messageData.header; //same header protobuff that was sent to server
-    var messageBody = messageData.body;     //same body protobuff that was sent to server
-
-    // ^^^ do something with messageData here ^^^
-
     //confirm reception of message
     socket.emit('recieved', {messageId: messageData.id});
+
+    var messageHeader = messageData.header; //same header that was sent to server
+    var messageBody = messageData.body;     //same body that was sent to server
+
+    // do something with messageData here
+    // ...
 });
