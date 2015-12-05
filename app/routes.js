@@ -326,9 +326,16 @@ module.exports = function(app) {
             missingDevices : []
         };
 
+        /* calculate number of iterations necessary */
+        var numIterationsCompleted = 0;
+        var numIterationsRequired = 0;
+        for (var i=0; i<req.body.messages.length; i++) {
+            numIterationsRequired += req.body.messages[i].headers.length;
+        }
+
         /* iterate through messages */
         for (var i=0; i<req.body.messages.length; i++) {
-            var messageBody = req.body.messages[i].body; //in form of protobuf
+            var messageBody = req.body.messages[i].body;
             /* iterate through headers (recipients) for each message */
             for (var j=0; j<req.body.messages[i].headers.length; j++) {
                 var recipient = req.body.messages[i].headers[j].recipient.split(NAME_DELIMITER);
@@ -342,12 +349,27 @@ module.exports = function(app) {
                         return res.sendStatus(500);
                     } else if (!recipientUser) { //if recipientIdKey DNE in DB
                         responseBody.keysNotFound.push(req.body.messages[i].headers[j].recipient);
+                        if(++numIterationsCompleted == numIterationsRequired) {
+                            success(null, identityKey, deviceId, function(status) {
+                                return res.status(status).send(messageBody);
+                            });
+                        }
                     } else if (recipientUser.revoked) { //if recipientIdKey is revoked
                         responseBody.revokedKeys.push(req.body.messages[i].headers[j].recipient);
+                        if(++numIterationsCompleted == numIterationsRequired) {
+                            success(null, identityKey, deviceId, function(status) {
+                                return res.status(status).send(messageBody);
+                            });
+                        }
                     } else if (!userContainsDeviceId(recipientUser, deviceId)) { //if device does not belong to identityKey
                         responseBody.missingDevices.push(req.body.messages[i].headers[j].recipient);
-                    } else { //else, queue message
-                        /* queue message */
+                        if(++numIterationsCompleted == numIterationsRequired) {
+                            success(null, identityKey, deviceId, function(status) {
+                                return res.status(status).send(messageBody);
+                            });
+                        }
+                    } else {
+                        /* else, queue message */
                         MessageQueue.create({
                             recipientIdKey : recipientIdKey,
                             recipientDid : recipientDid,
@@ -370,19 +392,17 @@ module.exports = function(app) {
                                 // if(socketId) {
                                 //     io.sockets.emit('message', pushMessageBody);
                                 // }
-
-                                /* return body if all messages dealt with */
-                                if (i >= req.body.messages.length) {
+                                if(++numIterationsCompleted == numIterationsRequired) {
                                     success(null, identityKey, deviceId, function(status) {
                                         return res.status(status).send(messageBody);
                                     });
                                 }
                             }
-                        });
+                        });//end of enqueue message
                     }
-                });
-            }
-        }
+                });//end of findone recipient user
+            } //end of inner for loop
+        } //end of outer for loop
     });
 
     app.delete('/api/v1/key/', auth, function(req, res) {
