@@ -25,7 +25,7 @@ var options ={
 };
 
 
-/* Load protobuf helper methods */
+/* Load helper methods */
 var helper = require('../app/helperFunctions');
 
 /* Constants */
@@ -44,7 +44,7 @@ var protoPrekeys; //sungular protobuf "prekeys" message
 var prekeysObj;
 
 
-describe("Routes:", function(done) {
+describe("RouteSpec:", function(done) {
 
     it('Create Credentials & Keys for testing', function(done) {
         request(app)
@@ -63,24 +63,6 @@ describe("Routes:", function(done) {
             prekeys = res.body.preKeys;
             prekeysObj = helper.prekeysObjectConstructor(lastResortKey, prekeys);
             done();
-        });
-    });
-
-
-    describe("Sockets:", function(){
-        describe("Auth not registered", function(){
-            it('should connect & return not registered', function(done){
-                var socket = ioClient.connect("http://localhost:8080", options);
-                socket.once('connect', function(data){
-                    socket.emit('authentication', { username:authUn, password:authPass });
-                    socket.once('not authorized', function(data) {
-                        console.log("ERROR MESSAGE: "+data.message);
-                        expect(data.message).toBe('not registered');
-                        socket.disconnect();
-                        done();
-                    });
-                });
-            });
         });
     });
 
@@ -146,7 +128,6 @@ describe("Routes:", function(done) {
             });
             describe('Try Valid Credentials:', function() {
                 it('should respond with 200', function(done){
-                    /////console.log("SENDER-PRE-ENC: %j", protoPrekeys.prekeys[0]);
                     request(app)
                     .post('/api/v1/key/initial/')
                     .auth(authUn, authPass)
@@ -174,52 +155,9 @@ describe("Routes:", function(done) {
         });//end of 'Valid Credentials'
     });//end of decribe 'Initial Authentication, not registered'
 
-    describe('Sockets Registered:', function(){
-        describe('Registered:', function(){
-            it('should connect & return authorized', function(done){
-                var socket = ioClient.connect("http://localhost:8080", options);
-                socket.once('connect', function(data){
-                    socket.emit('authentication', { username:authUn, password:authPass });
-                    socket.once('authorized', function(data) {
-                        socket.disconnect();
-                        done();
-                    });
-                });
-
-            });
-        });
-    });
-
     describe('Regular Authentication, Registered', function() {
         describe('GET /api/v1/key/', function() {
-            describe('Try Invalid Credentials', function() {
-                it('Bad Signature: should respond with 401, signature', function(done){
-                    request(app)
-                    .get('/api/v1/key/')
-                    .auth(authUn, authPassBadSig)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split("|")[0]})
-                    .expect(401, 'signature', done);
-                });
-                it('Future Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
-                    request(app)
-                    .get('/api/v1/key/')
-                    .auth(authUn, authPassFuture)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split("|")[0]})
-                    .expect('Server-Time', /[0-9]*/)
-                    .expect(401, 'time', done);
-                });
-                it('Past Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
-                    request(app)
-                    .get('/api/v1/key/')
-                    .auth(authUn, authPassPast)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split("|")[0]})
-                    .expect('Server-Time', /[0-9]*/)
-                    .expect(401, 'time', done);
-                });
-            });//end of 'Try Invalid Credentials'
+
             describe('Try Valid Credentials', function() {
                 it('should respond with 200 & list of matching prekeys', function(done){
                     request(app)
@@ -415,62 +353,6 @@ describe("Routes:", function(done) {
             });//end of 'Valid Credentials'
         }); //end of 'POST /api/v1/message/'
 
-        describe('Sockets:', function(){
-            describe('Message on server:', function(){
-                it('should connect & return message', function(done){
-                    var socket = ioClient.connect("http://localhost:8080", options);
-                    socket.once('connect', function(data){
-                        socket.emit('authentication', { username:authUn, password:authPass });
-                        socket.once('message', function(messageData) {
-                            expect(messageData.header).toBeDefined();
-                            expect(messageData.body).toBeDefined();
-                            expect(messageData.id).toBeDefined();
-                            //confirm reception of message
-                            socket.emit('recieved', {messageId: messageData.id});
-                            socket.disconnect();
-                            done();
-                        });
-                    });
-
-                });
-                it('all messages for recipient should be removed from DB', function(done) {
-                    MessageQueue.count({recipientIdKey: authUn.split("|")[0],
-                                        recipientDid: authUn.split("|")[1]}, function(err, count){
-                        expect(count).toEqual(0);
-                        done();
-                    });
-                });
-                it('should recieve push message imediately after sending when sockets are connected', function(done){
-                    //connect to socket
-                    var socket = ioClient.connect("http://localhost:8080", options);
-                    socket.once('connect', function(data){
-                        socket.emit('authentication', { username:authUn, password:authPass });
-                        socket.on('message', function(messageData) {
-                            expect(messageData.header).toBeDefined();
-                            expect(messageData.body).toBeDefined();
-                            expect(messageData.id).toBeDefined();
-                            //confirm reception of message
-                            socket.emit('recieved', {messageId: messageData.id});
-                            socket.disconnect();
-                            done();
-                        });
-                    });
-                    //submit Message
-                    request(app)
-                    .post('/api/v1/message/')
-                    .auth(authUn, authPass)
-                    .set('Content-Type', 'application/json')
-                    .send({messages: [{headers:[{recipient: authUn, messageHeader: "base64 encoded string"},], body: "base64 encoded string"},]})
-                    .expect(function(res) {
-                        res.body.messagesQueued = 1;
-                        //res.body.keysNotFound.length = 0;
-                        //res.body.revokedKeys.length = 0;
-                        //res.body.missingDevices.length = 0;
-                    })
-                    .expect(200);
-                });
-            });
-        });
         /*======= Delete device =======*/
         describe('DELETE /api/v1/key/', function(){
             describe('Try Invalid Credentials', function() {
@@ -530,10 +412,10 @@ describe("Routes:", function(done) {
         });//end of 'Valid Credentials'
     });
 
-    it('Close Server', function(done) {
-        server.close();
-        done();
-    });
+    // it('Close Server', function(done) {
+    //     server.close();
+    //     done();
+    // });
 });
 
 /* Helper Functions */
