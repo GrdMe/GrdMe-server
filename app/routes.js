@@ -387,11 +387,8 @@ module.exports = function(app) {
                                     header: message.messageHeader,
                                     body: message.messageBody
                                 }
-                                var recipientUn = message.recipientIdKey+"|"+recipientDid;
+                                var recipientUn = message.recipientIdKey+NAME_DELIMITER+recipientDid;
                                 require('../push/socket').emitMessage(recipientUn, pushMessageBody);
-                                // if(socketId) {
-                                //     io.sockets.emit('message', pushMessageBody);
-                                // }
                                 if(++numIterationsCompleted == numIterationsRequired) {
                                     success(null, identityKey, deviceId, function(status) {
                                         return res.status(status).send(messageBody);

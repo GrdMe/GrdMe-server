@@ -3,6 +3,7 @@
 var request = require('supertest');
 var server = require('../server');
 var express = require('express');
+var sleep = require('sleep');
 var app = server.app;
 
 /* database setup */
@@ -173,6 +174,7 @@ describe("socketSpec.js", function(){
                             socket.emit('recieved', {messageId: messageData.id});
                             numMessagesRecieved++;
                             if(numMessagesRecieved == numMessages) {
+                                expect(numMessagesRecieved).toEqual(2);
                                 socket.disconnect();
                                 done();
                             }
@@ -194,7 +196,21 @@ describe("socketSpec.js", function(){
                     var socket = ioClient.connect("http://localhost:8080", options);
                     socket.once('connect', function(data){
                         socket.emit('authentication', { username:authUn, password:authPass });
-                        socket.on('message', function(messageData) {
+                        socket.once('authorized', function(data){
+                            request(app)
+                            .post('/api/v1/message/')
+                            .auth(authUn, authPass)
+                            .set('Content-Type', 'application/json')
+                            .send({messages: [{headers:[{recipient: authUn, messageHeader: "base64 encoded string"},], body: "base64 encoded string"}]})
+                            .expect(function(res) {
+                                res.body.messagesQueued = numMessages;
+                            })
+                            .expect(200)
+                            .end(function(err, res){
+                                if (err) throw err;
+                            });
+                        });
+                        socket.once('message', function(messageData) {
                             expect(messageData.header).toBeDefined();
                             expect(messageData.body).toBeDefined();
                             expect(messageData.id).toBeDefined();
@@ -204,16 +220,13 @@ describe("socketSpec.js", function(){
                             done();
                         });
                     });
-                    //submit Message
-                    request(app)
-                    .post('/api/v1/message/')
-                    .auth(authUn, authPass)
-                    .set('Content-Type', 'application/json')
-                    .send(messageRequestBody)
-                    .expect(function(res) {
-                        res.body.messagesQueued = numMessages;
-                    })
-                    .expect(200);
+                });
+                it('all messages for recipient should be removed from DB', function(done) {
+                    MessageQueue.count({recipientIdKey: authUn.split("|")[0],
+                                        recipientDid: authUn.split("|")[1]}, function(err, count){
+                        expect(count).toEqual(0);
+                        done();
+                    });
                 });
             });
         });

@@ -18,7 +18,6 @@ var io;
 module.exports.emitMessage = function(userName, message) {
     var socketId = clients[userName];
     if(socketId) {
-        console.log("%%%%%");
         io.to(socketId).emit('message', message);
     }
 
@@ -28,10 +27,6 @@ module.exports.listen = function(server) {
     io = socketio.listen(server);
 
     io.sockets.on('connection', function(socket) {
-        //console.log("====Socket Connected!====");
-        //console.log(socket.id);
-        //socket.emit('message', { hello: 'world' });
-
 
         socket.on('authentication', function(data) {
             authorize(data.username, data.password, function(errObject)  { //if socket authorized
