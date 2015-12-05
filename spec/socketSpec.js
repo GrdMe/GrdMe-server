@@ -3,7 +3,6 @@
 var request = require('supertest');
 var server = require('../server');
 var express = require('express');
-var sleep = require('sleep');
 var app = server.app;
 
 /* database setup */
