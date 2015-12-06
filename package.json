@@ -18,7 +18,8 @@
   },
   "scripts": {
     "start": "node server.js",
-    "test": "NODE_ENV=development ./node_modules/.bin/jasmine-node --verbose --forceexit spec"
+    "test": "NODE_ENV=development ./node_modules/.bin/jasmine-node --verbose --forceexit spec",
+    "production-start": "nohup NODE_ENV=production forever server.js"
   },
   "devDependencies": {
     "should": "latest",
