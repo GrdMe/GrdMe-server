@@ -323,7 +323,7 @@ module.exports = function(app) {
 
 
     app.get('/', function (req, res) {
-        res.send('Hello World!');
+        res.send('Grd Me Server running in '+ process.env.NODE_ENV +' mode.');
     });
 
 }; //end module.exports

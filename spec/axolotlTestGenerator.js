@@ -9,6 +9,7 @@ var store = {
 var axol = axolotl(store);
 
 var base64 = require('base64-arraybuffer');
+var helper = require('../app/helperFunctions')
 
 /* Constants */
 var constants = require('../app/constants');
@@ -29,7 +30,7 @@ module.exports.generate = function(numPrekeys, callback) {
                     // Generate valid auth password
                     var now = new Date();
                     var basicAuthPassword = String(now.getTime() + (constants.AUTH_CHALLENGE_TIME_TO_LIVE*1000) - 1);
-                    var signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(basicAuthPassword)));
+                    var signature = base64.encode(crypto.sign(idKeyPair.private, helper.str2ab(basicAuthPassword)));
                     basicAuthPassword = basicAuthPassword.concat(constants.NAME_DELIMITER);
                     basicAuthPassword = basicAuthPassword.concat(signature);
 
@@ -37,7 +38,7 @@ module.exports.generate = function(numPrekeys, callback) {
                     var future = (now.getTime() + (2*constants.AUTH_CHALLENGE_TIME_TO_LIVE*1000));
                     var futurePassword = String(future);
                     futurePassword = futurePassword.concat(constants.NAME_DELIMITER);
-                    var futureSignature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(String(future))));
+                    var futureSignature = base64.encode(crypto.sign(idKeyPair.private, helper.str2ab(String(future))));
                     futurePassword = futurePassword.concat(futureSignature);
 
                     // Generate bad password <valid timestamp>|<bad signature>
@@ -49,7 +50,7 @@ module.exports.generate = function(numPrekeys, callback) {
                     var past = now.getTime() - (constants.AUTH_CHALLENGE_TIME_TO_LIVE*1000);
                     var pastPassword = String(past);
                     pastPassword = pastPassword.concat(constants.NAME_DELIMITER);
-                    signature = base64.encode(crypto.sign(idKeyPair.private, base64.decode(String(past))));
+                    signature = base64.encode(crypto.sign(idKeyPair.private, helper.str2ab(String(past))));
                     pastPassword = pastPassword.concat(signature);
 
                     //construct response object
