@@ -73,6 +73,7 @@ module.exports.initialAuth = function (req, res, next) {
 module.exports.standardAuth = function (req, res, next) {
     /* get basic_auth fields from request */
     var user = basicAuth(req);
+    console.log("USER: %j", user);
     if(!user) {
         console.log("Authentication Failed - No basic_auth");
         return unauthorized(res, 'badly formed credentials');
@@ -81,14 +82,14 @@ module.exports.standardAuth = function (req, res, next) {
         /* Parse auth credentials */
         var credentials = basicAuth(req);
         var names = credentials.name.split(constants.NAME_DELIMITER);
-        if (names.length != 2) {
+        if (names.length != 2 || names[0] == "" || names[1] == "") {
             console.log("Authentication Failed - Badly Formed basic_auth name");
             return unauthorized(res, 'badly formed credentials');
         }
         var identityKey = names[0];
         var deviceId = names[1];
         var pass = credentials.pass.split(constants.NAME_DELIMITER);
-        if (names.length != 2) {
+        if (pass.length != 2 || pass[0] == "" || pass[1] == "") {
             console.log("Authentication Failed - Badly Formed basic_auth pass");
             return unauthorized(res, 'badly formed credentials');
         }

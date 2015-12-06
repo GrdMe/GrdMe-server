@@ -102,6 +102,30 @@ describe("RouteSpec:", function(done) {
     describe('Initial Authentication, not registered:', function() {
         describe('POST /api/v1/key/initial/', function() {
             describe('Try Invalid Credentials', function() {
+                it('No Credentials: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/key/initial/')
+                    //.auth()
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Empty Strings: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/key/initial/')
+                    .auth("", "")
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Only Delimiter: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/key/initial/')
+                    .auth(constants.NAME_DELIMITER, constants.NAME_DELIMITER)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
                 it('Bad Signature: should respond with 401, signature', function(done){
                     request(app)
                     .post('/api/v1/key/initial/')
@@ -161,6 +185,30 @@ describe("RouteSpec:", function(done) {
     describe('Regular Authentication, Registered', function() {
         describe('GET /api/v1/key/', function() {
             describe('Try Invalid Credentials', function() {
+                it('No Credentials: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .get('/api/v1/key/')
+                    //.auth()
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Empty Strings: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .get('/api/v1/key/')
+                    .auth("", "")
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Only Delimiter: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .get('/api/v1/key/')
+                    .auth(constants.NAME_DELIMITER, constants.NAME_DELIMITER)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
                 it('Bad Signature: should respond with 401, signature', function(done){
                     request(app)
                     .get('/api/v1/key/')
@@ -253,6 +301,30 @@ describe("RouteSpec:", function(done) {
         }); //end of 'GET /api/v1/key/'
         describe('POST /api/v1/key/update/', function(){
             describe('Try Invalid Credentials', function() {
+                it('No Credentials: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/key/update/')
+                    //.auth()
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Empty Strings: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/key/update/')
+                    .auth("", "")
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Only Delimiter: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/key/update/')
+                    .auth(constants.NAME_DELIMITER, constants.NAME_DELIMITER)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
                 it('Bad Signature: should respond with 401, signature', function(done){
                     request(app)
                     .post('/api/v1/key/update/')
@@ -320,6 +392,30 @@ describe("RouteSpec:", function(done) {
         }); //end of 'POST /api/v1/key/update'
         describe('POST /api/v1/message/', function(){
             describe('Try Invalid Credentials', function() {
+                it('No Credentials: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/message/')
+                    //.auth()
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Empty Strings: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/message/')
+                    .auth("", "")
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Only Delimiter: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .post('/api/v1/message/')
+                    .auth(constants.NAME_DELIMITER, constants.NAME_DELIMITER)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
                 it('Bad Signature: should respond with 401', function(done){
                     request(app)
                     .post('/api/v1/message/')
@@ -385,6 +481,30 @@ describe("RouteSpec:", function(done) {
         /*======= Delete device =======*/
         describe('DELETE /api/v1/key/', function(){
             describe('Try Invalid Credentials', function() {
+                it('No Credentials: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .delete('/api/v1/key/')
+                    //.auth()
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Empty Strings: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .delete('/api/v1/key/')
+                    .auth("", "")
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
+                it('Only Delimiter: should respond with 401, badly formed credentials', function(done){
+                    request(app)
+                    .delete('/api/v1/key/')
+                    .auth(constants.NAME_DELIMITER, constants.NAME_DELIMITER)
+                    .set('Content-Type', 'application/json')
+                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    .expect(401, 'badly formed credentials', done);
+                });
                 it('Bad Signature: should respond with 401, signature', function(done){
                     request(app)
                     .delete('/api/v1/key/')
