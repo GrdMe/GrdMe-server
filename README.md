@@ -16,8 +16,11 @@ Dev Setup
 ### 1. Install
 This project uses a Vagrant virtual machine to ensure a homogeneous dev environment and simplify the installation of packages / dependancies.
 To use vagrant, you must have vagrant and virtual box installed:
-  Install Vagrant <https://www.vagrantup.com/downloads.html>
-  Install Virtual Box <https://www.virtualbox.org/wiki/Downloads>
+
+Install Vagrant <https://www.vagrantup.com/downloads.html>
+
+Install Virtual Box <https://www.virtualbox.org/wiki/Downloads>
+
 Clone this repository to your machine.
 ### 2. Start Vagrant
 From the root directory of this repository, run:
