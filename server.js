@@ -13,9 +13,14 @@
     var rateLimit      = require('express-rate-limit');     // docs: https://www.npmjs.com/package/express-rate-limit
 
     // configuration ===========================================================
-    var limiter = rateLimit({/* config */});
-    //app.use(limiter);
+    var limiter = rateLimit({windowMs: 60000, //keep recordes of requests in memory for 60 seconds
+                             delayAfter: 10,  //begin delaying response after 10 requests
+                             max: 15          //max number of requests in 1 min before 429
+                            });
     switch(process.env.NODE_ENV){
+        case 'test':
+
+            break;
         case 'development':
             app.use(morgan('dev'));      // log every request to the console
             break;
@@ -23,6 +28,7 @@
             app.use(morgan('common'));   // log every request to the console
             break;
         default:
+            app.use('/api/', limiter);   //use limiter on urls starting with /api/
             app.use(morgan('dev'));      // log every request to the console
             break;
     }
