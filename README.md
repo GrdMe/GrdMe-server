@@ -1,9 +1,15 @@
 [![Build Status](https://travis-ci.org/grdme/grd.me-server.svg)](https://travis-ci.org/grdme/grd.me-server)
 
-Grd Me
-======
+Grd Me Server
+=============
+
+This is the server that handles message routing and key management for [Grd Me](https://github.com/grdme/grd.me). 
 
 Grd Me (/ɡärd mē/) is an open source browser plugin that provides encrypted communication across any web platform.  We support aes and ecc. Available at https://grd.me.
+
+Documentation
+==============
+Documentation regarding API protocols, push protocols, and testing is located in the [wiki](https://github.com/grdme/grd.me-server/wiki).
 
 Dev Setup
 ==============
