@@ -2,16 +2,25 @@ var base64 = require('base64-arraybuffer');
 
 var prekeysObjectConstructor = function(lastResortKey, prekeys) {
     var obj = {
-        lastResortKey : base64EncodePrekey(lastResortKey),
+        lastResortKey : constructApiPrekeyObjFromAxolotlPrekey(lastResortKey),
         prekeys : []
     };
 
     for (var i=0; i<prekeys.length; i++) {
-        obj.prekeys.push(base64EncodePrekey(prekeys[i]));
+        obj.prekeys.push(constructApiPrekeyObjFromAxolotlPrekey(prekeys[i]));
     }
     return obj;
 };
 module.exports.prekeysObjectConstructor = prekeysObjectConstructor;
+
+var constructApiPrekeyObjFromAxolotlPrekey = function(prekey) {
+    var result = new Object();
+    result.id = prekey.id;
+    result.signature = "base64 signature string";
+    result.preKey = base64.encode(prekey.keyPair.public);
+    return result;
+};
+//module.constructApiPrekeyObjFromAxolotlPrekey = constructApiPrekeyObjFromAxolotlPrekey;
 
 var base64EncodePrekey = function(prekey) {
     prekey.keyPair.public = base64.encode(prekey.keyPair.public);
