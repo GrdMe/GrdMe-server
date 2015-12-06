@@ -44,7 +44,7 @@ module.exports.initialAuth = function (req, res, next) {
                 var timeNow = new Date();
                 var difference = timeNow - timeAuthDate;
                 var pubkey = base64.decode(identityKey);
-                var dataToSign = base64.decode(String(authDate));
+                var dataToSign = helper.str2ab(String(authDate));
                 var signature = base64.decode(authSig);
                 var verified = crypto.verifySignature(pubkey,
                                              dataToSign,
@@ -110,7 +110,7 @@ module.exports.standardAuth = function (req, res, next) {
                     var difference = timeNow - timeAuthDate
                     if (difference < (constants.AUTH_CHALLENGE_TIME_TO_LIVE * 1000) && difference > (constants.AUTH_CHALLENGE_TIME_TO_LIVE * 1000 * -1)) { //if auth is fresh
                         /* Verify signature on date */
-                        var verified = crypto.verifySignature(base64.decode(identityKey), base64.decode(String(authDate)), authSig);
+                        var verified = crypto.verifySignature(base64.decode(identityKey), helper.str2ab(String(authDate)), authSig);
                         /* return apropriate response */
                         if (verified) {
                             return next();

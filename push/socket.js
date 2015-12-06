@@ -7,6 +7,9 @@ var Users        = require('../app/models/user');
 /* constants */
 var constants = require('../app/constants');
 
+/* helper functions */
+var helper = require('../app/helperFunctions');
+
 //keep track of connected clients
 //object keyed by identityKey|deviceId
 //session specific mapping of socket.id to identityKey|deviceId
@@ -104,7 +107,7 @@ var authorize = function(username, password, callback) {
                 var timeNow = new Date();
                 var difference = timeNow - timeAuthDate;
                 var pubkey = base64.decode(identityKey);
-                var dataToSign = base64.decode(String(authDate));
+                var dataToSign = helper.str2ab(String(authDate));
                 var signature = base64.decode(authSig);
                 var verified = crypto.verifySignature(pubkey,
                                                       dataToSign,
