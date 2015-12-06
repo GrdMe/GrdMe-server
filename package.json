@@ -5,25 +5,33 @@
   "main": "server.js",
   "author": "grdme team",
   "dependencies": {
+    "axolotl-crypto": "latest",
+    "base64-arraybuffer": "latest",
+    "basic-auth": "latest",
     "body-parser": "latest",
     "express": "^4.13.3",
+    "express-rate-limit": "latest",
     "method-override": "latest",
+    "mongoose": "latest",
     "morgan": "latest",
-    "nano": "latest",
-    "basic-auth": "latest",
-    "protobufjs": "latest",
-    "bcrypt": "latest",
-    "mongoose": "latest"
+    "socket.io": "latest"
   },
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "NODE_ENV=development ./node_modules/.bin/jasmine-node --verbose --forceexit spec"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "should": "latest",
+    "supertest": "latest",
+    "jasmine-node": "latest",
+    "socket.io-client": "latest",
+    "axolotl": "latest"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/grdme/grd.me-server.git"
   },
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/grdme/grd.me-server/issues"
   },

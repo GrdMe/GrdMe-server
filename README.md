@@ -10,8 +10,8 @@ Dev Setup
 ### 1. Install
 This project uses a Vagrant virtual machine to ensure a homogeneous dev environment and simplify the installation of packages / dependancies.
 To use vagrant, you must have vagrant and virtual box installed:
-Install Vagrant <https://www.vagrantup.com/downloads.html>
-Install Virtual Box <https://www.virtualbox.org/wiki/Downloads>
+  Install Vagrant <https://www.vagrantup.com/downloads.html>
+  Install Virtual Box <https://www.virtualbox.org/wiki/Downloads>
 Clone this repository to your machine.
 ### 2. Start Vagrant
 From the root directory of this repository, run:
@@ -35,22 +35,15 @@ This is a synced directory with the project folder on your host machine. Any cha
 To start the server, run the following commands in /vagrant on the virtual machine:
 ```bash
 npm install
-node server.js
+npm start
 ```
-To access the server from your local machine, got to:
-```
-http://11.12.13.14:8080/
-```
-To access the database (CouchDB) from your local machine, got to:
-```
-http://11.12.13.14:5984/
-```
-To access the futon (CouchDB's web-based administration console)from your local machine, got to:
-```
-http://11.12.13.14:5984/_utils/
+To run tests, run:
+```bash
+npm install
+npm test
 ```
 ### 4. Stopping Vagrant
-To stop gracefully, rin the following from the project directory:
+To stop gracefully, run the following from the project directory:
 ```bash
 vagrant halt
 ```
