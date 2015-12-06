@@ -14,7 +14,7 @@ Documentation regarding API protocols, push protocols, and testing is located in
 Dev Setup
 ==============
 ### 1. Install
-This project uses a Vagrant virtual machine to ensure a homogeneous dev environment and simplify the installation of packages / dependancies.
+This project uses a Vagrant virtual machine to ensure a homogeneous dev environment and simplify the installation of packages & dependancies.
 To use vagrant, you must have vagrant and virtual box installed:
 
 Install Vagrant <https://www.vagrantup.com/downloads.html>
