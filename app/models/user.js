@@ -13,12 +13,8 @@ var userSchema = mongoose.Schema({
     numberOfDevices: Number,
 
     <deviceId> :    {deviceId: Number,
-                     lastResortKey: {keyId: Number,
-                                     key: Object
-                                    },
-                     prekeys: [{keyId: Number,
-                                key: Object
-                              }]
+                     lastResortKey: Object,
+                     prekeys: [Object, ...]
                     }
 }
 */
