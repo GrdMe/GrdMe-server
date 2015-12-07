@@ -9,7 +9,7 @@ Grd Me (/ɡärd mē/) is an open source browser plugin that provides encrypted c
 
 Documentation
 ==============
-Documentation regarding API protocols, push protocols, and testing is located in the [wiki](https://github.com/grdme/grd.me-server/wiki).
+Documentation regarding API protocols, push protocols, and testing is located [in the wiki](https://github.com/grdme/grd.me-server/wiki).
 
 Dev Setup
 ==============
