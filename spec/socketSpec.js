@@ -39,7 +39,6 @@ var authPassFuture;
 var authPassPast;
 var prekeys; //array of array buffer prekeys
 var lastResortKey; //singular array buffer prekey
-var protoPrekeys; //sungular protobuf "prekeys" message
 var prekeysObj;
 
 
