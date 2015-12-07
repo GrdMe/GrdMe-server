@@ -130,7 +130,7 @@ module.exports = function(app) {
     });
 
     //getting a recipients prekeys based on idkey
-    app.get('/api/v1/key/', auth.standardAuth, function(req, res) {
+    app.get('/api/v1/key/:idKey', auth.standardAuth, function(req, res) {
         /* get basic_auth fields from request */
         var user = basicAuth(req);
         if (!user) {
@@ -143,7 +143,7 @@ module.exports = function(app) {
         var authIdentityKey = names[0];
         var authDeviceId = names[1];
 
-        var identityKey = req.body.identityKey;
+        var identityKey = req.params.idKey;
         /* Create DB Entry. New user and/or new device w/ prekeys */
         Users.findOne({identityKey : identityKey},
             function(err, dbUser) {

@@ -75,7 +75,7 @@ describe("RouteSpec:", function(done) {
             describe('GET /api/v1/key/', function() {
                 it('should respond with 401, not registered', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPass)
                     .expect(401, 'not registered', done);
                 });
@@ -187,51 +187,51 @@ describe("RouteSpec:", function(done) {
             describe('Try Invalid Credentials', function() {
                 it('No Credentials: should respond with 401, badly formed credentials', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     //.auth()
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .expect(401, 'badly formed credentials', done);
                 });
                 it('Empty Strings: should respond with 401, badly formed credentials', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth("", "")
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .expect(401, 'badly formed credentials', done);
                 });
                 it('Only Delimiter: should respond with 401, badly formed credentials', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(constants.NAME_DELIMITER, constants.NAME_DELIMITER)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .expect(401, 'badly formed credentials', done);
                 });
                 it('Bad Signature: should respond with 401, signature', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPassBadSig)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .expect(401, 'signature', done);
                 });
                 it('Future Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPassFuture)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
                 it('Past Password: should respond with 401, time & time in \'Server-Time\' header', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPassPast)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .expect('Server-Time', /[0-9]*/)
                     .expect(401, 'time', done);
                 });
@@ -239,10 +239,10 @@ describe("RouteSpec:", function(done) {
             describe('Try Valid Credentials', function() {
                 it('should respond with 200 & list of matching prekeys', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPass)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .end(function(err, res) {
                         if(err) {
                             throw err;
@@ -260,10 +260,10 @@ describe("RouteSpec:", function(done) {
             describe ('Consume all prekeys', function() {
                 it('should respond with 205', function(done) {
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPass)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .end(function(err, res) {
                         if (err) {
                             throw err;
@@ -280,10 +280,10 @@ describe("RouteSpec:", function(done) {
                 });
                 it('should respond with 205 & lastResortKey', function(done) {
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPass)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     .end(function(err, res) {
                         if (err) {
                             throw err;
@@ -369,10 +369,10 @@ describe("RouteSpec:", function(done) {
                 });
                 it('fetching keys should respond with 200 & list of matching prekeys', function(done){
                     request(app)
-                    .get('/api/v1/key/')
+                    .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                     .auth(authUn, authPass)
-                    .set('Content-Type', 'application/json')
-                    .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                    //.set('Content-Type', 'application/json')
+                    //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                     //.expect(200, done);
                     .end(function(err, res) {
                         if(err) {
@@ -553,9 +553,9 @@ describe("RouteSpec:", function(done) {
         describe('Try Valid Credentials:', function() {
             it('should respond with 401, not registered', function(done){
                 request(app)
-                .get('/api/v1/key/')
+                .get('/api/v1/key/'+encodeURIComponent(authUn.split(constants.NAME_DELIMITER)[0]))
                 .auth(authUn, authPass)
-                .send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
+                //.send({identityKey : authUn.split(constants.NAME_DELIMITER)[0]})
                 .expect(401, 'not registered', done);
             });
         });//end of 'Valid Credentials'
