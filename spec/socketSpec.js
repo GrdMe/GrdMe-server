@@ -171,6 +171,7 @@ describe("socketSpec.js", function(){
                             numMessagesRecieved++;
                             if(numMessagesRecieved == numMessages) {
                                 expect(numMessagesRecieved).toEqual(2);
+                                sleep(1000);
                                 socket.disconnect();
                                 done();
                             }
