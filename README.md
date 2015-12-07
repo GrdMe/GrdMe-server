@@ -25,40 +25,40 @@ Clone this repository to your machine.
 ### 2. Start Vagrant
 From the root directory of this repository, run:
 ```bash
-vagrant up
+$ vagrant up
 ```
 This will create the virtual machine and install all the required packages / dependancies.
 
 Next, run:
 ```bash
-vagrant ssh
+$ vagrant ssh
 ```
 This will start an ssh session into the virtual machine.
 
 Enter the project directory:
 ```bash
-cd /vagrant
+$ cd /vagrant
 ```
 This is a synced directory with the project folder on your host machine. Any changes here will appear on your host machine and vice-versa.
 ### 3. Serving & Testing
 To start the server, run the following commands in /vagrant on the virtual machine:
 ```bash
-npm install
-npm start
+$ npm install
+$ npm start
 ```
 To run tests, run:
 ```bash
-npm install
-npm test
+$ npm install
+$ npm test
 ```
 ### 4. Stopping Vagrant
-To stop gracefully, run the following from the project directory:
+To stop gracefully, run the following from the project directory on your actual machine (not the virtual machine):
 ```bash
-vagrant halt
+$ vagrant halt
 ```
 To remove all traces of the Vagrant vm, run:
 ```bash
-vagrant destroy
+$ vagrant destroy
 ```
 
 Cryptography Notice
