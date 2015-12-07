@@ -170,7 +170,7 @@ describe("socketSpec.js", function(){
                             numMessagesRecieved++;
                             if(numMessagesRecieved == numMessages) {
                                 expect(numMessagesRecieved).toEqual(2);
-                                sleep(1000);
+                                //sleep(1000);
                                 socket.disconnect();
                                 done();
                             }
@@ -180,7 +180,7 @@ describe("socketSpec.js", function(){
                 });
                 it('all messages for recipient should be removed from DB', function(done) {
                     /* sleep to allow server to recieve messages and modify DB */
-                    sleep(2000);
+                    //sleep(2000);
                     /* begin test */
                     MessageQueue.count({recipientIdKey: authUn.split(constants.NAME_DELIMITER)[0],
                                         recipientDid: authUn.split(constants.NAME_DELIMITER)[1]}, function(err, count){
