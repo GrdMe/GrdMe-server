@@ -179,6 +179,9 @@ describe("socketSpec.js", function(){
 
                 });
                 it('all messages for recipient should be removed from DB', function(done) {
+                    /* sleep to allow server to recieve messages and modify DB */
+                    sleep(2000);
+                    /* begin test */
                     MessageQueue.count({recipientIdKey: authUn.split(constants.NAME_DELIMITER)[0],
                                         recipientDid: authUn.split(constants.NAME_DELIMITER)[1]}, function(err, count){
                         expect(count).toEqual(0);
@@ -230,3 +233,12 @@ describe("socketSpec.js", function(){
 
 
 });
+
+var sleep = function (milliseconds) {
+  var start = new Date().getTime();
+  for (var i = 0; i < 1e7; i++) {
+    if ((new Date().getTime() - start) > milliseconds){
+      break;
+    }
+  }
+}
