@@ -4,3 +4,5 @@ grd_me.xpi
 npm-debug.log
 .DS_Store
 .vagrant
+ssl
+*.swp
